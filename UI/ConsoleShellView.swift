@@ -6,13 +6,14 @@ import MetalKit
 import UIKit
 
 struct ConsoleShellGeometry {
+    static let imageSize = CGSize(width: 1051, height: 1496)
     let area: CGRect
     private func imageRect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> CGRect {
-        CGRect(x: area.minX + x / 1051 * area.width,
-               y: area.minY + y / 1497 * area.height,
-               width: width / 1051 * area.width, height: height / 1497 * area.height)
+        CGRect(x: area.minX + x / Self.imageSize.width * area.width,
+               y: area.minY + y / Self.imageSize.height * area.height,
+               width: width / Self.imageSize.width * area.width, height: height / Self.imageSize.height * area.height)
     }
-    var topScreen: CGRect { imageRect(139, 113, 775, 518) }
+    var topScreen: CGRect { imageRect(75, 96, 900, 540) }
     var bottomScreen: CGRect { imageRect(215, 828, 620, 504) }
     var circlePad: CGRect { imageRect(28, 890, 162, 164) }
     var cStick: CGRect { imageRect(878, 856, 74, 74) }
@@ -36,7 +37,7 @@ final class ConsoleShellView: UIView {
     var onMenu: (() -> Void)?
     var menuFrame: CGRect { geometry?.menu ?? bounds }
     private var geometry: ConsoleShellGeometry?
-    private let shellImage = UIImageView(image: UIImage(named: "New3DSWhiteFaceplateXLV5"))
+    private let shellImage = UIImageView(image: UIImage(named: "New3DSWhiteFaceplateXLBigScreen"))
     private let stick = ConsoleCirclePad()
     private let cStick = ConsoleCirclePad()
     private var buttons: [UIButton] = []
@@ -44,7 +45,8 @@ final class ConsoleShellView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = .black
+        backgroundColor = UIColor(white: 0.94, alpha: 1)
+        clipsToBounds = true
         isMultipleTouchEnabled = true
         shellImage.contentMode = .scaleToFill
         addSubview(shellImage)
@@ -70,9 +72,11 @@ final class ConsoleShellView: UIView {
             control.shape = (4...7).contains(index) ? .circle : .rounded
             control.accessibilityLabel = label
             control.addAction(UIAction { [weak self] _ in self?.onButton?(button, true) }, for: .touchDown)
-            // Accessibility and keyboard activation send only the release; pressing again first is a no-op for real touches.
+            control.addAction(UIAction { [weak self] _ in self?.onButton?(button, false) },
+                              for: .touchCancel)
+            // Accessibility can activate on release without a touchDown; cancellation must never synthesize a press.
             control.addAction(UIAction { [weak self] _ in self?.onButton?(button, true); self?.onButton?(button, false) },
-                              for: [.touchUpInside, .touchUpOutside, .touchCancel, .primaryActionTriggered])
+                              for: [.touchUpInside, .touchUpOutside, .primaryActionTriggered])
             addSubview(control)
             buttons.append(control)
         }
@@ -82,10 +86,20 @@ final class ConsoleShellView: UIView {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    func cancelInput() {
+        bottomScreen.cancelTouch()
+        stick.cancelTouch()
+        cStick.cancelTouch()
+        for button in buttons + [menu] {
+            button.cancelTracking(with: nil)
+            button.sendActions(for: .touchCancel)
+        }
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
-        let ratio: CGFloat = 1051 / 1497
-        let width = min(bounds.width, bounds.height * ratio)
+        let ratio = ConsoleShellGeometry.imageSize.width / ConsoleShellGeometry.imageSize.height
+        let width = max(bounds.width, bounds.height * ratio)
         let height = width / ratio
         let area = CGRect(x: bounds.midX - width / 2, y: bounds.midY - height / 2,
                           width: width, height: height)

@@ -22,12 +22,12 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private static let effects: [(mode: MetalFXMode, interpolates: Bool)] = [
         (.off, false), (.spatial, false), (.temporal, false), (.temporal, true)]
     private var runner: GameRunner?
-    private var portraitLocked = false
-
+    private var consolePresentation: ConsolePresentation?
+    private var orientationLocked = false
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
     override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation { .portrait }
     @available(iOS 26.0, *)
-    override var prefersInterfaceOrientationLocked: Bool { portraitLocked }
+    override var prefersInterfaceOrientationLocked: Bool { orientationLocked }
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
 
@@ -38,6 +38,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         .keyboardQ: .leftTrigger, .keyboardW: .rightTrigger]
     override var canBecomeFirstResponder: Bool { true }
     override func pressesBegan(_ presses: Set<UIPress>, with event: UIPressesEvent?) {
+        guard consolePresentation?.isSuspended != true else { return }
         var unhandled = presses
         for press in presses { if let key = press.key, let id = Self.keys[key.keyCode] { runner?.button(id, pressed: true); unhandled.remove(press) } }
         if !unhandled.isEmpty { super.pressesBegan(unhandled, with: event) }
@@ -54,27 +55,39 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         becomeFirstResponder()
         // TDS_OPEN=1 opens the selected game at launch, for scripted checks (see TDS_INPUT in GameRunner).
         if runner == nil, ProcessInfo.processInfo.environment["TDS_OPEN"] != nil { openSelected() }
+        updateConsoleOrientation()
+    }
+
+    func updateConsoleOrientation() {
         setNeedsUpdateOfSupportedInterfaceOrientations()
-        view.window?.windowScene?.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { error in
-            NSLog("3duos Lab portrait request: %@", error.localizedDescription)
+        guard let scene = view.window?.windowScene,
+              scene.effectiveGeometry.interfaceOrientation != preferredInterfaceOrientationForPresentation else { return }
+        orientationLocked = false
+        setNeedsUpdateOfPrefersInterfaceOrientationLocked()
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: supportedInterfaceOrientations)) { error in
+            NSLog("3duos console orientation: %@", error.localizedDescription)
         }
     }
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        if #available(iOS 26.0, *), !portraitLocked,
-           view.window?.windowScene?.interfaceOrientation.isPortrait == true {
-            portraitLocked = true
+        if !orientationLocked, view.window?.windowScene?.effectiveGeometry.interfaceOrientation == preferredInterfaceOrientationForPresentation {
+            orientationLocked = true
             setNeedsUpdateOfPrefersInterfaceOrientationLocked()
         }
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = .black
+        view.backgroundColor = UIColor(white: 0.94, alpha: 1)
         shell.frame = view.bounds
         shell.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         view.addSubview(shell)
+        consolePresentation = ConsolePresentation(in: view, shell: shell) { [weak self] suspended in
+            self?.displayLink?.isPaused = suspended
+            self?.runner?.setSuspended(suspended)
+            if suspended { self?.runner?.releaseInput() }
+        }
         install(screens.top, in: shell.topScreen)
         install(screens.bottom, in: shell.bottomScreen)
         shell.topScreen.isPaused = true
@@ -193,6 +206,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             runner?.setTextureFiltering(true)
             runner?.setTexturePack(programID: cartridge.programID)
             runner?.setMetalFXInputs(mode == .temporal && MTLCreateSystemDefaultDevice().map(MetalFXScreenPipeline.supportsTemporal) == true)
+            runner?.setSuspended(consolePresentation?.isSuspended == true)
             runner?.start()
             shell.onButton = { [weak self] id, pressed in self?.runner?.button(id, pressed: pressed) }
             shell.onStick = { [weak self] id, position in if id == .circlePad { self?.runner?.stick(position) } }
@@ -229,7 +243,12 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             effectLabel.isHidden = false
             tick = 0
             displayLink?.invalidate()
-            let link = CADisplayLink(target: self, selector: #selector(step))
+            let link: CADisplayLink
+            if #available(iOS 27.0, *),
+               let sceneLink = view.window?.windowScene?.displayLink(target: self, selector: #selector(step)) {
+                link = sceneLink
+            } else { link = CADisplayLink(target: self, selector: #selector(step)) }
+            link.isPaused = consolePresentation?.isSuspended == true
             link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
             link.add(to: .main, forMode: .common)
             displayLink = link
@@ -283,4 +302,6 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         alert.addAction(UIAlertAction(title: "OK", style: .default))
         present(alert, animated: true)
     }
+
+    func setSceneActive(_ active: Bool) { consolePresentation?.setSceneActive(active) }
 }

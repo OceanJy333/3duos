@@ -16,9 +16,10 @@ final class GameRunner {
 
     private let kernel: Kernel
     private let queue = DispatchQueue(label: "3duos.core", qos: .userInitiated)
-    private let lock = NSLock()
+    private let lock = NSCondition()
     private var latest = Snapshot()
     private var cancelled = false
+    private var suspended = false
 
     private let hid: HIDService?
     private var buttons: UInt32 = 0
@@ -55,6 +56,19 @@ final class GameRunner {
         var input = hid.input
         input.touch = point.map { (UInt16($0.x * 320), UInt16($0.y * 240)) }
         hid.input = input
+    }
+
+    func releaseInput() {
+        buttons = 0
+        hid?.releaseInput()
+    }
+
+    func setSuspended(_ suspended: Bool) {
+        lock.lock()
+        self.suspended = suspended
+        NSLog("3duos core: %@ at frame %d", suspended ? "pause" : "resume", latest.frames)
+        lock.broadcast()
+        lock.unlock()
     }
 
     // Before start(): the internal resolution as a multiple of the LCD. PICA_SCALE in the environment wins.
@@ -108,7 +122,14 @@ final class GameRunner {
             }
             var clock = (wall: DispatchTime.now().uptimeNanoseconds, ticks: kernel.ticks, speed: 1.0)
             while true {
-                lock.lock(); let done = cancelled; lock.unlock()
+                lock.lock()
+                if suspended {
+                    while suspended && !cancelled { lock.wait() }
+                    // Closed-lid time is not emulated time; resume without running a catch-up burst.
+                    clock = (wall: DispatchTime.now().uptimeNanoseconds, ticks: kernel.ticks, speed: 1.0)
+                }
+                let done = cancelled
+                lock.unlock()
                 if done { return }
                 let result = kernel.run(instructionBudget: 50_000)
                 pace(&clock)
@@ -132,5 +153,5 @@ final class GameRunner {
         }
     }
 
-    func cancel() { lock.lock(); cancelled = true; lock.unlock() }
+    func cancel() { lock.lock(); cancelled = true; lock.broadcast(); lock.unlock() }
 }

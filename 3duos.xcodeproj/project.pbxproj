@@ -88,6 +88,7 @@
 		DC96DC67677729CB8B714BEF /* PICAShaderProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */; };
 		DE050734B2F8A65114FDF9F3 /* SVCDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38CA4BC0255E378D57F2F28 /* SVCDispatch.swift */; };
 		DF45BB0C386A5E75E742D51B /* CityHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C23FBAE84DB78D020174D5 /* CityHash.swift */; };
+		E816B46A147002A0BCC45445 /* ConsolePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE58235DEF96D68C8DF7BE26 /* ConsolePresentation.swift */; };
 		EC9087F0C0574AB2A860D04B /* GameRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05FB9A43840E7571FB391985 /* GameRunner.swift */; };
 		EDFA5726932EE8B7F6629FCF /* PICAMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E86D02FCDCC5F4BA8463BE /* PICAMath.swift */; };
 		EE180E2F188DFF62DF8EE901 /* GPUState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D6F5D58D2378BA549D78C8A /* GPUState.swift */; };
@@ -181,6 +182,7 @@
 		F085430BD38E0ED044551A7B /* PICAMetalTextures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalTextures.swift; sourceTree = "<group>"; };
 		F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAShaderProgram.swift; sourceTree = "<group>"; };
 		F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		FE58235DEF96D68C8DF7BE26 /* ConsolePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolePresentation.swift; sourceTree = "<group>"; };
 		FF498BB5B37A9842F6A6A48E /* SVCThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVCThread.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -189,6 +191,7 @@
 			isa = PBXGroup;
 			children = (
 				A94B09397B0B01C297991211 /* ConsoleControls.swift */,
+				FE58235DEF96D68C8DF7BE26 /* ConsolePresentation.swift */,
 				9D89040322F81DD1378EC1F2 /* ConsoleShellView.swift */,
 				9FEF5F37B3A0CF7467F7617F /* LibraryScreens.swift */,
 			);
@@ -484,6 +487,7 @@
 				DF45BB0C386A5E75E742D51B /* CityHash.swift in Sources */,
 				34FCEEE2F5E44DB47C36DE41 /* ConsoleControls.swift in Sources */,
 				BDEC5FB45BDFF26E0B2E4CF7 /* ConsoleInput.swift in Sources */,
+				E816B46A147002A0BCC45445 /* ConsolePresentation.swift in Sources */,
 				677988445A52908CFA58133B /* ConsoleShellView.swift in Sources */,
 				2AAF2A2F394E61F5E08F64F1 /* DSPService.swift in Sources */,
 				10F21C42BB0FCD1CDB6FDF5B /* DuosAppDelegate.swift in Sources */,

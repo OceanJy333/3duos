@@ -29,4 +29,18 @@ final class DuosSceneDelegate: UIResponder, UIWindowSceneDelegate {
         window.makeKeyAndVisible()
         self.window = window
     }
+
+    func sceneDidBecomeActive(_ scene: UIScene) {
+        let root = window?.rootViewController as? RootController
+        root?.setSceneActive(true)
+        root?.updateConsoleOrientation()
+    }
+
+    func sceneWillResignActive(_ scene: UIScene) {
+        (window?.rootViewController as? RootController)?.setSceneActive(false)
+    }
+
+    func windowScene(_ windowScene: UIWindowScene, didUpdateEffectiveGeometry previousEffectiveGeometry: UIWindowScene.Geometry) {
+        (window?.rootViewController as? RootController)?.updateConsoleOrientation()
+    }
 }

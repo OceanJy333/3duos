@@ -51,7 +51,7 @@ xcrun swiftc Core/Graphics/MetalFXScreenPipeline.swift Tests/MetalFX/main.swift 
 MTL_DEBUG_LAYER=1 /tmp/3duos-metalfx-check 3
 ```
 
-Cartridge、Graphics 的独立命令见各自 `Tests/*/README.md` 或测试入口。iOS generic 和 Mac Catalyst 已编译；Mac Catalyst 已实测导入、Open、HOME、测试帧和六种 MetalFX 组合。部署目标已升到 iOS 26（Denoised 需要 iOS 18，Frame Interpolation 需要 iOS 26）。此机 `simctl` 当前没有 iOS runtime，Duo 在 `devicectl` 显示 `unavailable`；独立 App 尚未在 Duo 真机安装或验收。旧版已安装 App 与新工程 App ID 不同：新工程为 `xyz.ocean33.3duos.lab`。
+Cartridge、Graphics 的独立命令见各自 `Tests/*/README.md` 或测试入口。iOS generic 和 Mac Catalyst 已编译；Mac Catalyst 已实测导入、Open、HOME、测试帧和六种 MetalFX 组合。部署目标已升到 iOS 26（Denoised 需要 iOS 18，Frame Interpolation 需要 iOS 26）。2026-10-30 已安装 Duo iOS 27.2 simulator runtime，独立 App 已在该模拟器启动《时之笛》并显示双屏标题画面。本轮未验证 Duo 真机。旧版已安装 App 与新工程 App ID 不同：新工程为 `xyz.ocean33.3duos.lab`。
 
 ## 运动矢量验证
 
@@ -69,3 +69,12 @@ Cartridge、Graphics 的独立命令见各自 `Tests/*/README.md` 或测试入�
 ## 本机空间
 
 此前已清理多个 Xcode、Swift、Node 和视频过程缓存。本轮曾在没有 VM 进程或打开句柄时删除 Claude Cowork `rootfs.img`（10 GiB），保留其 `rootfs.img.zst` 与 `sessiondata.img`；空闲空间一度超过 50 GiB。Claude 桌面端随后在后台自动重建了这份镜像。尝试正常退出桌面端后，它又被后台任务拉起；目前不能把 50 GiB 目标记为持续达成。不要删除正在运行的 Claude 会话数据或手动删除系统 swap。磁盘空闲量会随系统 swap 变化，交接时用 `df -k /Users/ocean` 重新读取；不要以目录 `du` 代替实际回收量。
+
+## Duo 合盖与展开 · 2026-10-30
+
+- `UI/ConsolePresentation.swift` 使用 SDK 的 `UIHingeInteraction`（iOS 27.1+）。closed 显示横向白色 XL 外盖，partial/full 显示原有双屏。外盖转轴按作者反馈调整到 Duo 转轴侧。
+- 外屏横向盖板在固定竖向场景里旋转铺满，展开后使用竖向双屏。素材、屏幕与触控区共用 `ConsoleShellGeometry`，内屏由留边改为等比铺满。
+- `GameRunner` 使用条件变量暂停执行，展开继续同一个内核，恢复时重置计时；HOME 取消会唤醒已暂停的线程。合盖及离开前台清除触摸、摇杆和 HID 锁存输入。
+- iOS 27 的 scene-bound display link 随场景切换显示器。盖板图片没有虚拟摄像头；内外素材的外侧黑底已用生图补白。资源和完整提示词见 `Design/ASSETS.md`，视觉决定见 `DESIGN.md`。
+- 上屏随后改为 900 × 540（5:3），宽度比原版增加约 16%，面积增加约 21%；生成新皮肤 `New3DSWhiteFaceplateXLBigScreen`，同步收窄上屏边框、外移扬声器孔。坐标仍由 `ConsoleShellGeometry` 统一维护。
+- Duo 模拟器验证过 closed → partial → full 和游戏中 closed → full。核心日志显示 frame 2509 合盖，36 秒后仍从 frame 2509 继续；同一进程恢复后帧数继续增长。最终版 Start 按键已从标题进入存档选择界面。截图和日志在本机 `build/validation/duo-*.png`、`duo-core-fold.log`；构建日志为 `closed-lid-build.log` 与 `closed-lid-ios-build.log`。

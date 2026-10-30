@@ -23,6 +23,16 @@ final class HIDService: HLEService {
             inputLock.unlock()
         }
     }
+
+    func releaseInput() {
+        inputLock.lock()
+        pending = HIDInput()
+        latched = 0
+        latchedFrames = 0
+        latchedTouch = nil
+        touchFrames = 0
+        inputLock.unlock()
+    }
     // Games poll at 30 Hz or slower; a press or tap shorter than a few frames (a mouse click) must still be seen.
     private static let minimumHoldFrames = 4
     private var latched: UInt32 = 0, latchedFrames = 0
