@@ -25,6 +25,7 @@ final class GPUState {
     // Blocks until every queued GX command has run. Call before reading GX output or renderer state on another thread
     // (native framebuffers, motion, jitter, onDraw results), e.g. once per presented frame.
     func waitForIdle() { gx.sync {} }
+    var gxWaitNanoseconds: UInt64 = 0   // emulation thread blocked on GX work (GSP interrupts); a measure of GPU-side load
 
     // The PICA renderer renders into the guest memory it is first asked about.
     func renderer(memory: PagedMemory) -> PICARenderer {

@@ -37,15 +37,20 @@ final class PICATextureCache {
         let width = unit.width, height = unit.height
         guard width > 0, height > 0, width <= 1024, height <= 1024 else { return nil }
         let key = Key(address: unit.address, width: width, height: height, format: unit.format)
-        if let entry = entries[key], entry.checkedAt == generation { return entry }
-        let size = PICATextureFormat.byteCount(format: unit.format, width: width, height: height)
-        var raw = [UInt8](repeating: 0, count: size)
-        guard memory.copyOut(GPUState.virtualAddress(unit.address), to: &raw, count: size) else { return nil }
+        let address = GPUState.virtualAddress(unit.address)
         if let entry = entries[key] {
-            entry.checkedAt = generation
-            if entry.raw != raw { entry.raw = raw; decode(entry, unit) }
+            // Revalidated once per command list, in place: copied and decoded again only when the guest bytes changed.
+            if entry.checkedAt != generation {
+                entry.checkedAt = generation
+                if !entry.raw.withUnsafeBytes({ memory.matches(address, $0.baseAddress!, count: $0.count) }) {
+                    guard memory.copyOut(address, to: &entry.raw, count: entry.raw.count) else { return nil }
+                    decode(entry, unit)
+                }
+            }
             return entry
         }
+        var raw = [UInt8](repeating: 0, count: PICATextureFormat.byteCount(format: unit.format, width: width, height: height))
+        guard memory.copyOut(address, to: &raw, count: raw.count) else { return nil }
         if entries.count > 256 { entries.removeAll() }
         let entry = PICADecodedTexture(width: width, height: height, raw: raw)
         entry.checkedAt = generation

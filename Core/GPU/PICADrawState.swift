@@ -78,6 +78,7 @@ struct PICADrawState {
     var target = PICARenderTargetDescription()
     var merger = PICAOutputMerger()
     var colorWrite = true, depthStencilWrite = true
+    var overlay = false   // set by the renderer: a 2D top-screen draw (text, HUD) that goes into the UI layer
     var textures = [PICATextureUnit](repeating: PICATextureUnit(), count: 3)
     var tevStages: [PICATevStage] = []
     var tevBufferColor = SIMD4<Int32>(repeating: 0)

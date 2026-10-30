@@ -57,7 +57,9 @@ final class AudioOutput {
 
     init() {
         #if os(iOS)
-        try? AVAudioSession.sharedInstance().setCategory(.ambient)
+        // A game plays through the silent switch, like video; `.ambient` followed the switch and left the game mute.
+        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: .mixWithOthers)
+        try? AVAudioSession.sharedInstance().setActive(true)
         #endif
         let format = AVAudioFormat(standardFormatWithSampleRate: Self.sampleRate, channels: 2)!
         let node = AVAudioSourceNode(format: format) { [weak self] _, _, frames, list in

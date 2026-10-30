@@ -10,6 +10,7 @@ final class GameRunner {
         var topHighRes: PICAHighResFrame?
         var bottomHighRes: PICAHighResFrame?
         var frames = 0
+        var gameFrames = 0       // new top-screen images; their rate is the game's own frame rate (30 or 60)
         var speed = 1.0          // emulated seconds per wall second; 1 means real time, capped there
         var stop: KernelStop?
     }
@@ -98,21 +99,36 @@ final class GameRunner {
 
     private static let ticksPerSecond = 268_111_856.0
 
+    // Device log every 5 s: share of the core thread spent sleeping (headroom) and blocked on GX work, GPU time of the
+    // emulated GPU's command buffers, the longest gap between two new top images, and stale images held back.
+    private var perf = (start: 0.0, slept: 0.0, worstGap: 0.0, lastImage: 0.0, stale: 0, gx: UInt64(0), gpu: UInt64(0))
+    private func report(_ now: Double) {
+        guard now - perf.start >= 5 else { return }
+        let elapsed = now - perf.start, gx = kernel.gpu.gxWaitNanoseconds
+        let gpu = kernel.gpu.renderer(memory: kernel.memory).metal?.statistics.snapshot.nanoseconds ?? 0
+        if perf.start > 0 {
+            NSLog("3duos perf: sleep %.0f%% · gx wait %.0f%% · GPU %.0f ms/s · worst frame gap %.0f ms · stale %d", perf.slept / elapsed * 100,
+                  Double(gx - perf.gx) / 1e7 / elapsed, Double(gpu - perf.gpu) / 1e6 / elapsed, perf.worstGap * 1000, perf.stale)
+        }
+        perf = (now, 0, 0, perf.lastImage, 0, gx, gpu)
+    }
+
     // Sleeps when the core runs ahead of the 3DS clock, so the host idles instead of spinning at full speed; falls
     // back to measuring when it is slower than real time. Returns the speed over the last second.
     private func pace(_ clock: inout (wall: UInt64, ticks: UInt64, speed: Double)) {
         let now = DispatchTime.now().uptimeNanoseconds
         let emulated = Double(kernel.ticks - clock.ticks) / Self.ticksPerSecond, elapsed = Double(now - clock.wall) / 1e9
-        if emulated > elapsed + 0.002 { Thread.sleep(forTimeInterval: emulated - elapsed) }
+        if emulated > elapsed + 0.002 { Thread.sleep(forTimeInterval: emulated - elapsed); perf.slept += emulated - elapsed }
         if elapsed >= 1 {
             clock.speed = min(1, emulated / elapsed)
+            report(Double(now) / 1e9)
             clock.wall = now; clock.ticks = kernel.ticks
         }
     }
 
     func start() {
         queue.async { [self] in
-            var publishedFrame = -1
+            var publishedFrame = -1, gameFrames = 0
             // TDS_INPUT="start@1800,a@2600,stickright@3000,stickcenter@3010": scripted input by frame counter, for checks.
             let sticks: [String: (x: Float, y: Float)] = ["stickright": (1, 0), "stickleft": (-1, 0), "stickup": (0, 1), "stickdown": (0, -1), "stickcenter": (0, 0)]
             let names = Dictionary(uniqueKeysWithValues: Self.bits.keys.map { ("\($0)", $0) })
@@ -134,19 +150,32 @@ final class GameRunner {
                 let result = kernel.run(instructionBudget: 50_000)
                 pace(&clock)
                 let frame = kernel.gpu.frameCount
-                guard frame != publishedFrame || result != .budgetReached else { continue }
+                // The displayed buffer's GPU image completes asynchronously: right after a swap it can still hold the image of
+                // two frames ago. Never step back; publish as soon as a newer image completes instead of waiting for a vblank.
+                var topHighRes = kernel.gpu.highResFrame(.top)
+                if let image = topHighRes, let shown = latest.topHighRes, image.sequence < shown.sequence {
+                    if frame != publishedFrame { perf.stale += 1 }
+                    topHighRes = shown
+                }
+                guard frame != publishedFrame || result != .budgetReached || topHighRes?.sequence != latest.topHighRes?.sequence else { continue }
                 publishedFrame = frame
                 while let step = script.first, frame >= step.1 {
                     if let id = names[step.0] { button(id, pressed: true); button(id, pressed: false) } else if let position = sticks[step.0] { stick(position) }
                     script.removeFirst()
                 }
                 // GPU-rendered screens are shown at the internal resolution; only the others are read back at 400x240.
-                let topHighRes = kernel.gpu.highResFrame(.top), bottomHighRes = kernel.gpu.highResFrame(.bottom)
+                let bottomHighRes = kernel.gpu.highResFrame(.bottom)
                 if topHighRes == nil || bottomHighRes == nil { kernel.gpu.waitForIdle() }
                 let top = topHighRes == nil ? kernel.gpu.framebuffer(.top, memory: kernel.memory) : nil
                 let bottom = bottomHighRes == nil ? kernel.gpu.framebuffer(.bottom, memory: kernel.memory) : nil
+                if topHighRes == nil || topHighRes?.sequence != latest.topHighRes?.sequence {
+                    gameFrames += 1
+                    let now = Double(DispatchTime.now().uptimeNanoseconds) / 1e9
+                    perf.worstGap = max(perf.worstGap, now - perf.lastImage); perf.lastImage = now
+                }
                 lock.lock()
-                latest = Snapshot(top: top, bottom: bottom, topHighRes: topHighRes, bottomHighRes: bottomHighRes, frames: frame, speed: clock.speed, stop: result == .budgetReached ? nil : result)
+                latest = Snapshot(top: top, bottom: bottom, topHighRes: topHighRes, bottomHighRes: bottomHighRes, frames: frame, gameFrames: gameFrames,
+                                  speed: clock.speed, stop: result == .budgetReached ? nil : result)
                 lock.unlock()
                 if result != .budgetReached { FileHandle.standardError.write("3duos stop: \(result)\nstubbed: \(kernel.stubbedCalls.suffix(12).joined(separator: "\n"))\n".data(using: .utf8)!); return }
             }

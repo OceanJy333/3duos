@@ -184,7 +184,9 @@ final class GSPService: HLEService {
         kernel.gpu.gx.async(execute: job)
         busyUntil = max(busyUntil, kernel.ticks) + UInt64(bytes) / Self.bytesPerTick
         kernel.schedule(atTick: busyUntil) { [weak self] in
+            let start = DispatchTime.now().uptimeNanoseconds
             job.wait()
+            if let gpu = self?.kernel?.gpu { gpu.gxWaitNanoseconds += DispatchTime.now().uptimeNanoseconds - start }
             interrupts.forEach { self?.trigger($0) }
         }
     }

@@ -44,6 +44,14 @@ extension PagedMemory {
         }
     }
 
+    // True when `count` guest bytes equal `bytes`, compared in place; false also when a page is unmapped.
+    func matches(_ address: UInt32, _ bytes: UnsafeRawPointer, count: Int) -> Bool {
+        var same = true
+        return transfer(address, count) { page, pageOffset, done, length in
+            if same { same = memcmp(page.bytes + pageOffset, bytes + done, length) == 0 }
+        } && same
+    }
+
     func copyIn(_ address: UInt32, from source: UnsafeRawPointer, count: Int) -> Bool {
         transfer(address, count) { page, pageOffset, done, length in
             (page.bytes + pageOffset).update(from: source.advanced(by: done).assumingMemoryBound(to: UInt8.self), count: length)
@@ -51,14 +59,13 @@ extension PagedMemory {
     }
 
     private func transfer(_ address: UInt32, _ count: Int, _ body: (MemoryPage, Int, Int, Int) -> Void) -> Bool {
-        guard count > 0 else { return true }
-        let first = address & ~0xFFF
-        let span = (Int(address & 0xFFF) + count + 0xFFF) & ~0xFFF
-        guard UInt64(first) + UInt64(span) <= 1 << 32, let pages = backing(first, size: UInt32(truncatingIfNeeded: span)) else { return false }
+        guard count > 0, UInt64(address) + UInt64(count) <= 1 << 32 else { return count == 0 }
+        let first = Int(address >> 12), last = Int((UInt64(address) + UInt64(count) - 1) >> 12)
+        guard (first...last).allSatisfy({ page($0) != nil }) else { return false }
         var done = 0, offset = Int(address & 0xFFF)
-        for page in pages where done < count {
+        for index in first...last {
             let length = min(4096 - offset, count - done)
-            body(page, offset, done, length)
+            body(page(index)!, offset, done, length)
             done += length
             offset = 0
         }

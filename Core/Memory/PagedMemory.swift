@@ -127,6 +127,8 @@ final class PagedMemory: ARMMemory {
         }
     }
 
+    func page(_ index: Int) -> MemoryPage? { pages[index] }
+
     func backing(_ address: UInt32, size: UInt32) -> [MemoryPage]? {
         guard isMapped(address, size: size) else { return nil }
         let first = Int(address >> 12)

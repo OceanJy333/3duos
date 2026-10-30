@@ -1,5 +1,6 @@
 // Input: decoded LCD frames or GPU frames at the internal resolution, a MetalFX mode, and an externally sized CAMetalLayer.
-// Output: frames submitted to that layer at its native pixel size: drawn as is, or MetalFX reconstructed and interpolated.
+// Output: frames submitted to that layer at its native pixel size: drawn as is, or MetalFX reconstructed and interpolated,
+//         with the game's UI layer composited on top.
 // Pos: Metal display endpoint, independent of the emulation and UI layers.
 import Foundation
 import Metal
@@ -16,6 +17,8 @@ final class MetalScreenPresenter {
     private let device: MTLDevice
     private let queue: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
+    private let layerPipeline: MTLRenderPipelineState   // UI layer over the scene: rgb = layer.rgb + scene * layer.a
+    private var uiLayer: MTLTexture?                    // the shown game frame's UI layer
     private let nearest: MTLSamplerState
     private let linear: MTLSamplerState
     private var effects: MetalFXScreenPipeline?
@@ -56,6 +59,10 @@ final class MetalScreenPresenter {
         descriptor.fragmentFunction = fragment
         descriptor.colorAttachments[0].pixelFormat = layer.pixelFormat
         pipeline = try device.makeRenderPipelineState(descriptor: descriptor)
+        let blend = descriptor.colorAttachments[0]!
+        blend.isBlendingEnabled = true; blend.sourceRGBBlendFactor = .one; blend.destinationRGBBlendFactor = .sourceAlpha
+        blend.sourceAlphaBlendFactor = .zero; blend.destinationAlphaBlendFactor = .one
+        layerPipeline = try device.makeRenderPipelineState(descriptor: descriptor)
         let samplers = [MTLSamplerMinMagFilter.nearest, .linear].map { filter -> MTLSamplerState? in
             let sampler = MTLSamplerDescriptor()
             sampler.minFilter = filter
@@ -101,6 +108,7 @@ final class MetalScreenPresenter {
     func present(_ frame: DecodedScreenFrame) -> Bool {
         let width = frame.screen.width
         guard frame.rgba.count == width * 240 * 4, let command = queue.makeCommandBuffer() else { return false }
+        uiLayer = nil
         if let effects = effects(width: width, height: 240) {
             effects.jitter = frame.jitter
             frame.rgba.withUnsafeBytes { effects.upload(rgba: $0.baseAddress!, depth: frame.depth, motion: frame.motion) }
@@ -128,6 +136,7 @@ final class MetalScreenPresenter {
             return presentUpscaled()
         }
         shownSequence = frame.sequence
+        uiLayer = frame.layer
         guard let command = queue.makeCommandBuffer() else { return false }
         guard let effects = effects(width: frame.color.width, height: frame.color.height) else {
             return draw(frame.color, fence: nil, sampler: linear, command: command)
@@ -159,6 +168,13 @@ final class MetalScreenPresenter {
         encoder.setFragmentTexture(texture, index: 0)
         encoder.setFragmentSamplerState(sampler, index: 0)
         encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        // Text and HUD skip MetalFX: drawn once, unjittered, over the upscaled or interpolated scene at the display's resolution.
+        if let uiLayer {
+            encoder.setRenderPipelineState(layerPipeline)
+            encoder.setFragmentTexture(uiLayer, index: 0)
+            encoder.setFragmentSamplerState(linear, index: 0)
+            encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
+        }
         encoder.endEncoding()
         command.present(drawable)
         command.commit()

@@ -1,6 +1,6 @@
 // input: nothing at run time; MSL source compiled with PICAMetalShaders.draw.
 // output: kernels that move pixels between high-res GPU render targets, the guest's native tiled buffers and the LCD image.
-// pos: the Metal backend's only bridges to guest memory (write-back, upload) and to the app (high-res LCD frame).
+// pos: the Metal backend's only bridges to guest memory (write-back, upload) and to the app (high-res LCD frame and UI layer).
 
 extension PICAMetalShaders {
     static let kernels = """
@@ -80,6 +80,7 @@ extension PICAMetalShaders {
                             texture2d<float, access::write> lcd [[texture(2)]], texture2d<float, access::write> lcdDepth [[texture(3)]],
                             texture2d<float, access::read> motion [[texture(4)]], texture2d<float, access::read> reactive [[texture(5)]],
                             texture2d<float, access::write> lcdMotion [[texture(6)]], texture2d<float, access::write> lcdReactive [[texture(7)]],
+                            texture2d<float, access::read> layer [[texture(8)]], texture2d<float, access::write> lcdLayer [[texture(9)]],
                             constant Transfer &t [[buffer(0)]], uint2 gid [[thread_position_in_grid]]) {
         if (int(gid.x) >= t.lcdWidth * t.scale || int(gid.y) >= 240 * t.scale) return;
         float S = float(t.scale);
@@ -87,12 +88,12 @@ extension PICAMetalShaders {
         float y = t.flip != 0 ? float(t.outputHeight) - oy : oy;
         float sx = ox * t.scaleX, sy = y * t.scaleY;                                 // native input position, rows bottom-up
         int2 base = int2(floor(sx * S - (t.scaleX - 1) * 0.5), floor((float(t.inputHeight) - sy) * S - (t.scaleY - 1) * 0.5));
-        float4 sum = 0; float z = 0, r = 0; float2 m = 0;
+        float4 sum = 0, ui = 0; float z = 0, r = 0; float2 m = 0;
         for (int j = 0; j < t.scaleY; j++) for (int i = 0; i < t.scaleX; i++) {
             uint2 at = uint2(clamp(base + int2(i, j), int2(0), int2(color.get_width() - 1, color.get_height() - 1)));
             sum += color.read(at);
             if (t.hasDepth != 0) z += depth.read(at);
-            if (t.hasMotion != 0) { m += motion.read(at).xy; r = max(r, reactive.read(at).x); }
+            if (t.hasMotion != 0) { m += motion.read(at).xy; r = max(r, reactive.read(at).x); ui += layer.read(at); }
         }
         float n = float(t.scaleX * t.scaleY);
         lcd.write(float4(sum.rgb / n, 1), gid);
@@ -101,7 +102,14 @@ extension PICAMetalShaders {
             m /= n;    // target pixels -> LCD pixels: column against y (flipped by the transfer), row against x
             lcdMotion.write(float4((t.flip != 0 ? m.y : -m.y) / t.scaleY, -m.x / t.scaleX, 0, 0), gid);
             lcdReactive.write(float4(r), gid);
+            lcdLayer.write(ui / n, gid);
         }
+    }
+
+    // Composites the UI layer into its target once the LCD image is taken (target.rgb = layer.rgb + target.rgb * T by blending),
+    // so the guest's own copy of the frame still shows the UI.
+    fragment float4 mergeLayer(UploadVaryings in [[stage_in]], texture2d<float, access::read> layer [[texture(0)]]) {
+        return layer.read(uint2(in.position.xy));
     }
     """
 }

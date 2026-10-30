@@ -137,14 +137,27 @@ final class PICARenderer {
         return r
     }
 
+    // The UI layer stores premultiplied color and the scene's remaining transmittance T, so display = layer.rgb + scene * T.
+    // A blend result = src * S + dst * D fits that when D is one factor for all channels and neither factor reads the
+    // destination: layer.rgb = src * S + layer.rgb * D, T *= D. Factors: 0 zero, 1 one, 2/3 src color, 6/7 src alpha,
+    // 10-13 constant color/alpha.
+    private static func layerable(_ m: PICAOutputMerger) -> Bool {
+        m.blendEnabled && m.equationRGB == 0 && [0, 1, 2, 3, 6, 7, 10, 11, 12, 13].contains(m.sourceRGB) && [0, 1, 6, 7, 12, 13].contains(m.destRGB)
+    }
+
     private func drawState() -> PICADrawState {
         var state = PICADrawState(registers)
         if emitsMotionInputs, state.target.height == 400 {
+            let m = state.merger
+            // 2D draws go to the UI layer, unjittered. The backend merges the layer back under any later 3D draw, so what is left
+            // at the end of the frame is the trailing run of 2D draws: text and HUD over the finished scene.
+            state.overlay = metal != nil && !m.depthTestEnabled && state.colorWrite && Self.layerable(m)
+            if state.overlay { return state }
             // LCD column runs along target y; LCD row runs against target x (which may be 2x supersampled).
             appliedShift = SIMD2(-jitter.y * Float(max(1, state.target.width / 240)), jitter.x)
             state.viewport.cornerX += appliedShift.x
             state.viewport.cornerY += appliedShift.y
-            if state.merger.depthTestEnabled, state.merger.depthWrite { topDepthReversed = state.merger.depthFunc >= 6 }   // greater, gequal
+            if m.depthTestEnabled, m.depthWrite { topDepthReversed = m.depthFunc >= 6 }   // greater, gequal
         }
         return state
     }
@@ -277,7 +290,7 @@ final class PICARenderer {
         var slots: [UInt32] = []
         slots.reserveCapacity(count)
         var assembler = PICAPrimitiveAssembler<UInt32>(topology: topology)
-        for k in ids.indices { assembler.submit(UInt32(indexed ? Int(slot[ids[k]]) : k)) { slots += [$0, $1, $2] } }
+        for k in ids.indices { assembler.submit(UInt32(indexed ? Int(slot[ids[k]]) : k)) { slots.append($0); slots.append($1); slots.append($2) } }
         let previous = emitsMotionInputs && state.target.height == 400
             ? motion.previousUniforms(mesh: layout.meshIdentity, count: count, first: first, indexed: indexed, uniforms: program.uniforms) : nil
 

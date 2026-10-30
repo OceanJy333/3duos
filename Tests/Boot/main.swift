@@ -122,16 +122,23 @@ if CommandLine.arguments.count > 1 {
             // The high-res LCD frame of the Metal backend, read back through a blit.
             if let frame = kernel.gpu.highResFrame(screen), let device = kernel.gpu.renderer(memory: kernel.memory).metalDevice {
                 let w = frame.color.width, h = frame.color.height
-                let buffer = device.makeBuffer(length: w * h * 4, options: .storageModeShared)!
-                let queue = device.makeCommandQueue()!, commands = queue.makeCommandBuffer()!, blit = commands.makeBlitCommandEncoder()!
-                blit.copy(from: frame.color, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(), sourceSize: MTLSize(width: w, height: h, depth: 1),
-                          to: buffer, destinationOffset: 0, destinationBytesPerRow: w * 4, destinationBytesPerImage: w * h * 4)
-                blit.endEncoding(); commands.commit(); commands.waitUntilCompleted()
-                let p = buffer.contents().assumingMemoryBound(to: UInt8.self)
-                var hires = Data("P6 \(w) \(h) 255\n".utf8)
-                hires.reserveCapacity(w * h * 3 + 20)
-                for i in 0..<(w * h) { hires.append(contentsOf: [p[i * 4], p[i * 4 + 1], p[i * 4 + 2]]) }
+                func read(_ texture: MTLTexture) -> [UInt8] {
+                    let buffer = device.makeBuffer(length: w * h * 4, options: .storageModeShared)!
+                    let queue = device.makeCommandQueue()!, commands = queue.makeCommandBuffer()!, blit = commands.makeBlitCommandEncoder()!
+                    blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(), sourceSize: MTLSize(width: w, height: h, depth: 1),
+                              to: buffer, destinationOffset: 0, destinationBytesPerRow: w * 4, destinationBytesPerImage: w * h * 4)
+                    blit.endEncoding(); commands.commit(); commands.waitUntilCompleted()
+                    return [UInt8](UnsafeBufferPointer(start: buffer.contents().assumingMemoryBound(to: UInt8.self), count: w * h * 4))
+                }
+                // -hires: the scene with the UI layer composited (rgb = ui.rgb + scene * ui.a); -ui: the UI layer over gray.
+                let p = read(frame.color), ui = frame.layer.map(read)
+                var hires = Data("P6 \(w) \(h) 255\n".utf8), layer = hires
+                for i in 0..<(w * h) { for c in 0..<3 {
+                    let t = ui.map { Int($0[i * 4 + 3]) } ?? 255, u = ui.map { Int($0[i * 4 + c]) } ?? 0
+                    hires.append(UInt8(min(255, u + Int(p[i * 4 + c]) * t / 255))); layer.append(UInt8(min(255, u + 128 * t / 255)))
+                } }
                 try hires.write(to: URL(fileURLWithPath: "\(shotDirectory)/\(screen)-hires\(suffix).ppm"))
+                if ui != nil { try layer.write(to: URL(fileURLWithPath: "\(shotDirectory)/\(screen)-ui\(suffix).ppm")) }
             }
             // --motion: motion magnitude as gray (8 px = white) and its mean/max, from the renderer's last finished frame.
             let motion = kernel.gpu.renderer(memory: kernel.memory).motion.lcdMotion
@@ -226,6 +233,33 @@ if CommandLine.arguments.count > 1 {
         hid.input.buttons = 0
         budgetLeft = budget - min(budget, press[1] + press[2])
     }
+    // --drawlog=FRAME prints every draw of the first GPU frame from FRAME on: depth test/write, blend factors, triangles.
+    if let at = options.first(where: { $0.hasPrefix("--drawlog=") }).flatMap({ Int($0.dropFirst(10)) }) {
+        var logged: Int?
+        kernel.gpu.renderer(memory: kernel.memory).onDraw = { d in
+            if logged == nil, kernel.gpu.frameCount >= at { logged = kernel.gpu.frameCount }
+            guard kernel.gpu.frameCount == logged else { return }
+            let m = d.state.merger
+            print("draw \(d.targetWidth)x\(d.targetHeight) depth=\(m.depthTestEnabled)/\(m.depthWrite) blend=\(m.blendEnabled) src=\(m.sourceRGB) dst=\(m.destRGB) tris=\(d.triangleCount) ui=\(d.state.overlay) tex=" + d.state.textures.filter(\.enabled).map { String(format: "%08X:%dx%d/f%d", $0.address, $0.width, $0.height, $0.format) }.joined(separator: ","))
+        }
+    }
+    // --keys=start@1900,a@2600,touch160:120@2700,shot@2800: at a GPU frame count, tap a button or the touch screen (HID holds
+    // either for a few frames) or write shots suffixed with the frame. Runs before the main budget.
+    if let keys = options.first(where: { $0.hasPrefix("--keys=") }), let hid = kernel.serviceDirectory["hid:USER"] as? HIDService {
+        let bits = ["a": 0, "b": 1, "select": 2, "start": 3, "right": 4, "left": 5, "up": 6, "down": 7, "r": 8, "l": 9, "x": 10, "y": 11]
+        var steps = keys.dropFirst(7).split(separator: ",").compactMap { step -> (String, Int)? in
+            let parts = step.split(separator: "@"); return parts.count == 2 ? Int(parts[1]).map { (String(parts[0]), $0) } : nil }
+        while !steps.isEmpty, kernel.run(instructionBudget: 50_000) == .budgetReached {
+            while let (name, frame) = steps.first, kernel.gpu.frameCount >= frame {
+                steps.removeFirst()
+                if name == "shot" { try writeShots("-\(frame)") }
+                else if name.hasPrefix("touch") {
+                    let xy = name.dropFirst(5).split(separator: ":").compactMap { UInt16($0) }
+                    hid.input.touch = (xy[0], xy[1]); hid.input.touch = nil
+                } else if let bit = bits[name] { hid.input.buttons = 1 << UInt32(bit); hid.input.buttons = 0 }
+            }
+        }
+    }
     // --film=N writes N numbered snapshots over the run, otherwise one at the end.
     let film = options.first(where: { $0.hasPrefix("--film=") }).flatMap { Int($0.dropFirst(7)) } ?? 1
     var stop = KernelStop.budgetReached
@@ -251,7 +285,10 @@ if CommandLine.arguments.count > 1 {
         }
     }
     let tail = options.contains("--trace") ? 100000 : 30
-    for line in kernel.log.suffix(tail) { print(line) }
+    // --grep=TEXT prints every kept log line containing TEXT instead of the tail.
+    if let text = options.first(where: { $0.hasPrefix("--grep=") }).map({ String($0.dropFirst(7)) }) {
+        for line in kernel.log where line.contains(text) { print(line) }
+    } else { for line in kernel.log.suffix(tail) { print(line) } }
     let threads = kernel.threads.map { String(format: "t%d prio=%d %@ pc=%08X waits=[%@]", $0.id, $0.priority, String(describing: $0.state), $0.cpu.pc, $0.waitObjects.map { $0.name }.joined(separator: ",")) }
     if case .cpu(_, let id) = stop, let thread = kernel.threads.first(where: { $0.id == id }) {
         print("regs: " + thread.cpu.registers.enumerated().map { String(format: "r%d=%08X", $0.offset, $0.element) }.joined(separator: " "))

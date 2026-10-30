@@ -15,6 +15,7 @@ final class APTService: HLEService {
     private var parameter: Parameter? = Parameter(sender: 0x101, signal: 1)
     private static let keyboard: UInt32 = 0x401, application: UInt32 = 0x300
     var keyboardText = "Link"
+    private var keyboardLoaded = false
 
     private func send(_ next: Parameter, _ kernel: Kernel) {
         parameter = next
@@ -44,8 +45,12 @@ final class APTService: HLEService {
         case 0x03: // Enable: HOME Menu answers with the Wakeup parameter
             if let parameter { send(parameter, kernel) }
             return IPCReply(command: command, [0])
-        case 0x09: // IsRegistered(appId): only the application itself; library applets finish before control returns
-            return IPCReply(command: command, [0, request.param(0) == Self.application ? 1 : 0])
+        case 0x09: // IsRegistered(appId): the application, and the keyboard from Preload/PrepareToStart until it finishes
+            let id = request.param(0)
+            return IPCReply(command: command, [0, id == Self.application || id == Self.keyboard && keyboardLoaded ? 1 : 0])
+        case 0x16, 0x18: // PreloadLibraryApplet, PrepareToStartLibraryApplet(appId)
+            if request.param(0) == Self.keyboard { keyboardLoaded = true }
+            return IPCReply(command: command, [0])
         case 0x0C: // SendParameter(source, destination, signal, size, handle, buffer)
             // The keyboard's Request carries the capture-buffer size; it answers with that much shared memory.
             if request.param(1) == Self.keyboard, request.param(2) == 2,
@@ -60,17 +65,19 @@ final class APTService: HLEService {
             else { return nil }
             var config = [UInt8](data)
             finishKeyboard(&config, text: text)
+            keyboardLoaded = false
             send(Parameter(sender: Self.keyboard, signal: 0xA, buffer: config), kernel)   // WakeupByExit
             return IPCReply(command: command, [0])
-        // Finalize, CancelParameter, Preload/FinishPreloading/PrepareToStart LibraryApplet, StartSystemApplet,
+        // Finalize, CancelParameter, FinishPreloading LibraryApplet, StartSystemApplet,
         // PrepareToClose/CloseApplication, PrepareToJump/JumpToHomeMenu, CancelLibraryApplet, SendDspSleep/WakeUp,
         // ReplySleepQuery, ReplySleepNotificationComplete, SendCaptureBufferInfo, NotifyToWait, SetAppCpuTimeLimit
-        case 0x04, 0x0F, 0x16, 0x17, 0x18, 0x19, 0x1F, 0x22, 0x27, 0x2B, 0x2C, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x43, 0x4F:
+        case 0x04, 0x0F, 0x17, 0x19, 0x1F, 0x22, 0x27, 0x2B, 0x2C, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F, 0x40, 0x43, 0x4F:
             return IPCReply(command: command, [0])
         case 0x05: // GetAppletManInfo(pos): active position, requested applet, HOME Menu, active applet
             return IPCReply(command: command, [0, 0, Self.application, 0x101, Self.application])
         case 0x06: // GetAppletInfo(appId): title id, media type, registered, loaded, attributes
-            let registered: UInt32 = request.param(0) == Self.application ? 1 : 0
+            // The HLE keyboard is always there; games poll until it reports registered and loaded before starting it.
+            let registered: UInt32 = [Self.application, Self.keyboard].contains(request.param(0)) ? 1 : 0
             return IPCReply(command: command, [0, 0, 0, 0, registered, registered, 0])
         case 0x4B, 0x51: // AppletUtility(command, input size, output size), GetStartupArgument(size, type): static-buffer output
             let size = Int(command == 0x4B ? request.param(2) : min(request.param(0), 0x1000))

@@ -15,19 +15,19 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private var presenters: [MetalScreenPresenter] = []
     private var scenes: [TestScene] = []
     private var displayLink: CADisplayLink?
+    private var gameRate = (time: 0.0, frames: 0, fps: 30.0)
+    private var shownTop: PICAHighResFrame?, pendingTop: [PICAHighResFrame] = [], topTicks = 0   // top-screen cadence
     private var tick = 0
     private var shownFrame = -1
-    private var effectIndex = UserDefaults.standard.object(forKey: "MetalFXSetting") as? Int ?? 1   // Spatial until the renderer offers real high-resolution frames
+    private var effectIndex = UserDefaults.standard.object(forKey: "MetalFXEffect") as? Int ?? 3   // Temporal upscaling + 2x frame interpolation
     private let effectLabel = UILabel()
     private static let effects: [(mode: MetalFXMode, interpolates: Bool)] = [
         (.off, false), (.spatial, false), (.temporal, false), (.temporal, true)]
     private var runner: GameRunner?
     private var consolePresentation: ConsolePresentation?
-    private var orientationLocked = false
+    private let stage = UIView()   // everything on screen; kept portrait to the device whatever the scene orientation
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
     override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation { .portrait }
-    @available(iOS 26.0, *)
-    override var prefersInterfaceOrientationLocked: Bool { orientationLocked }
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
 
@@ -59,31 +59,38 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     }
 
     func updateConsoleOrientation() {
-        setNeedsUpdateOfSupportedInterfaceOrientations()
-        guard let scene = view.window?.windowScene,
-              scene.effectiveGeometry.interfaceOrientation != preferredInterfaceOrientationForPresentation else { return }
-        orientationLocked = false
-        setNeedsUpdateOfPrefersInterfaceOrientationLocked()
-        scene.requestGeometryUpdate(.iOS(interfaceOrientations: supportedInterfaceOrientations)) { error in
+        guard let scene = view.window?.windowScene, scene.effectiveGeometry.interfaceOrientation != .portrait else { return }
+        scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { error in
             NSLog("3duos console orientation: %@", error.localizedDescription)
         }
+        view.setNeedsLayout()
     }
 
+    // Duo can hand a reopened scene over in landscape despite the portrait-only Info.plist. The stage then turns against the
+    // scene, so the console always stands upright along the phone's long side, like a rotation lock.
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        if !orientationLocked, view.window?.windowScene?.effectiveGeometry.interfaceOrientation == preferredInterfaceOrientationForPresentation {
-            orientationLocked = true
-            setNeedsUpdateOfPrefersInterfaceOrientationLocked()
+        let angle: CGFloat = switch view.window?.windowScene?.effectiveGeometry.interfaceOrientation {
+        case .landscapeRight: -.pi / 2
+        case .landscapeLeft: .pi / 2
+        case .portraitUpsideDown: .pi
+        default: 0
         }
+        let size = view.bounds.size
+        stage.transform = .identity
+        stage.bounds = CGRect(origin: .zero, size: angle.truncatingRemainder(dividingBy: .pi) == 0 ? size : CGSize(width: size.height, height: size.width))
+        stage.center = CGPoint(x: size.width / 2, y: size.height / 2)
+        stage.transform = CGAffineTransform(rotationAngle: angle)
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = UIColor(white: 0.94, alpha: 1)
-        shell.frame = view.bounds
+        view.addSubview(stage)
+        shell.frame = stage.bounds
         shell.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        view.addSubview(shell)
-        consolePresentation = ConsolePresentation(in: view, shell: shell) { [weak self] suspended in
+        stage.addSubview(shell)
+        consolePresentation = ConsolePresentation(in: stage, shell: shell) { [weak self] suspended in
             self?.displayLink?.isPaused = suspended
             self?.runner?.setSuspended(suspended)
             if suspended { self?.runner?.releaseInput() }
@@ -120,7 +127,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private func updateEffectsTitle() {
         let setting = Self.effects[effectIndex]
         screens.setEffectsTitle(setting.mode.title + (setting.interpolates ? " + FI" : ""))
-        UserDefaults.standard.set(effectIndex, forKey: "MetalFXSetting")
+        UserDefaults.standard.set(effectIndex, forKey: "MetalFXEffect")
     }
 
     private func install(_ child: UIView, in parent: UIView) {
@@ -249,17 +256,20 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
                 link = sceneLink
             } else { link = CADisplayLink(target: self, selector: #selector(step)) }
             link.isPaused = consolePresentation?.isSuspended == true
-            link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
+            // ProMotion: games ask for 120 Hz (the system may lower it); refreshes without a new image draw nothing. Test scenes: 60 Hz.
+            let hz: Float = runner == nil ? 60 : 120
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: hz, preferred: hz)
             link.add(to: .main, forMode: .common)
             displayLink = link
+            (gameRate, shownTop, pendingTop, topTicks) = ((CACurrentMediaTime(), runner?.snapshot.gameFrames ?? 0, 30), nil, [], 0)
         } catch {
             showLibrary()
             showError(error)
         }
     }
 
-    // The display runs at 60 Hz and the emulated source at 30 Hz: even ticks produce a source frame and show
-    // the interpolated (or raw) image, odd ticks show the real upscaled frame.
+    // A game shows its newest frames. Test scenes run at 60 Hz with a 30 Hz source: even ticks produce a source frame and
+    // show the interpolated (or raw) image, odd ticks show the real upscaled frame.
     @objc private func step() {
         defer { tick += 1 }
         if let runner {
@@ -267,10 +277,24 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             let setting = Self.effects[effectIndex]
             let output = presenters.first?.scaling.map { " · \(setting.mode.title)\(setting.interpolates ? "+FI" : "") \($0)" }
                 ?? state.topHighRes.map { " · \($0.color.width)×\($0.color.height)" } ?? ""
-            effectLabel.text = state.stop.map { "Stopped: \($0)" } ?? "Frame \(state.frames) · \(Int(state.speed * 100))%\(output)"
+            guard let link = displayLink else { return }
+            measureGameRate(state.gameFrames, at: link.timestamp)
+            let hz = Int((1 / (link.targetTimestamp - link.timestamp)).rounded())
+            effectLabel.text = state.stop.map { "Stopped: \($0)" }
+                ?? "\(Int(gameRate.fps.rounded())) fps · \(hz) Hz · \(Int(state.speed * 100))%\(output)"
             let fresh = state.frames != shownFrame   // temporal scalers must see each game frame once
             shownFrame = state.frames
-            for (presenter, (highRes, framebuffer)) in zip(presenters, [(state.topHighRes, state.top), (state.bottomHighRes, state.bottom)]) {
+            // Steady cadence: each top frame holds the same number of refreshes (4 for 30 fps at 120 Hz), so a few milliseconds
+            // of arrival jitter never turns into 3- and 5-refresh holds. An early frame waits for its turn; a late one extends
+            // the current. With interpolation the first half shows the interpolated frame, the second half the real one.
+            // Up to two frames wait their turn, so one arriving early is shown late rather than skipped; a longer backlog drops the oldest.
+            if let frame = state.topHighRes, frame.sequence > (pendingTop.last ?? shownTop)?.sequence ?? -1 { pendingTop = Array((pendingTop + [frame]).suffix(2)) }
+            let hold = max(1, Int((Double(hz) / (gameRate.fps > 45 ? 60 : 30)).rounded()))
+            topTicks += 1
+            var top: PICAHighResFrame?
+            if let pending = pendingTop.first, topTicks >= hold { (top, shownTop, topTicks) = (pending, pending, 0); pendingTop.removeFirst() }
+            else if topTicks == hold / 2 { top = shownTop }
+            for (presenter, (highRes, framebuffer)) in zip(presenters, [(top, state.top), (state.bottomHighRes, state.bottom)]) {
                 if let highRes { presenter.present(highRes) }
                 else if fresh, let framebuffer, let frame = try? FramebufferDecoder.decode(framebuffer) { presenter.present(frame) }
             }
@@ -281,6 +305,16 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             for (presenter, frame) in zip(presenters, frames) { presenter.present(frame) }
         } else {
             for presenter in presenters where presenter.interpolates { presenter.presentUpscaled() }
+        }
+    }
+
+    // The game's own frame rate (new top-screen images per second), measured each second; games switch between 30 and 60.
+    private func measureGameRate(_ frames: Int, at time: CFTimeInterval) {
+        guard time - gameRate.time >= 1 else { return }
+        gameRate = (time, frames, max(1, Double(frames - gameRate.frames) / (time - gameRate.time)))
+        if Int(time) % 10 == 0 {   // device logs, every ~10 s
+            NSLog("3duos status: %@ · panel max %d Hz%@", effectLabel.text ?? "", view.window?.windowScene?.screen.maximumFramesPerSecond ?? 0,
+                  ProcessInfo.processInfo.isLowPowerModeEnabled ? " · Low Power Mode" : "")
         }
     }
 

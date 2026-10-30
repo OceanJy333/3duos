@@ -8,8 +8,11 @@ final class SaveArchives {
     private var archives: [UInt64: URL] = [:]
     private var nextHandle: UInt64 = 1
     static let notFound: UInt32 = 0xC880_4478
+    static let notFormatted: UInt32 = 0xC8A0_4554
 
     init(root: URL) { self.root = root }
+
+    private func folder(_ archive: UInt32) -> URL { root.appendingPathComponent(String(format: "archive-%X", archive)) }
 
     private func hostURL(archive: URL, pathType: UInt32, bytes: [UInt8]) -> URL {
         var text: String
@@ -29,12 +32,18 @@ final class SaveArchives {
         let failed = { IPCReply(command: request.command, [0xC880_44CA]) }
         switch request.command {
         case 0x080C: // OpenArchive(archive id, path type, path size, path)
-            let folder = root.appendingPathComponent(String(format: "archive-%X", request.param(0)))
+            let folder = folder(request.param(0))
+            // A save data archive that was never formatted makes the game format it and create its files, as on hardware.
+            if request.param(0) == 4, !FileManager.default.fileExists(atPath: folder.path) { return IPCReply(command: 0x080C, [Self.notFormatted, 0, 0]) }
             try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let handle = nextHandle
             nextHandle += 1
             archives[handle] = folder
             return IPCReply(command: 0x080C, [0, UInt32(truncatingIfNeeded: handle), UInt32(handle >> 32)])
+        case 0x084C: // FormatSaveData(archive id, path type, path size, block size, directories, files, ...): an empty save folder
+            let folder = folder(request.param(0))
+            try? FileManager.default.removeItem(at: folder)
+            return (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil ? ok() : failed()
         case 0x080E: // CloseArchive
             archives[UInt64(request.param(1)) << 32 | UInt64(request.param(0))] = nil
             return ok()

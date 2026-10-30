@@ -68,15 +68,18 @@ final class PICAMotionTracker {
     // so the bottom-screen transfer that follows the top one does not discard the frame.
     func finishFrame() {
         guard !current.isEmpty else { return }
-        let scaleX = max(1, width / 240)
-        var plane = [SIMD2<Float>](repeating: .zero, count: 400 * 240)
-        for row in 0..<240 {
-            for column in 0..<400 {
-                let m = buffer[column * width + (239 - row) * scaleX]
-                plane[row * 400 + column] = SIMD2(m.y, -m.x / Float(scaleX))
+        // Only the software path rasterizes into `buffer`; with Metal it stays empty (the GPU writes motion itself).
+        if !buffer.isEmpty {
+            let scaleX = max(1, width / 240)
+            var plane = [SIMD2<Float>](repeating: .zero, count: 400 * 240)
+            for row in 0..<240 {
+                for column in 0..<400 {
+                    let m = buffer[column * width + (239 - row) * scaleX]
+                    plane[row * 400 + column] = SIMD2(m.y, -m.x / Float(scaleX))
+                }
             }
+            lcdMotion = plane
         }
-        lcdMotion = plane
         finishedFrames += 1
         previous = current; current.removeAll()
         buffer = [SIMD2<Float>](repeating: .zero, count: buffer.count); nearest = [Float](repeating: .infinity, count: nearest.count)

@@ -31,7 +31,7 @@ enum PICAMetalVertex {
         u(registers[0], registers[1], registers[2], registers[3]); u(registers[4], registers[5], registers[6], registers[7])
         u(semantics[0], semantics[1], semantics[2], semantics[3]); u(semantics[4], semantics[5], semantics[6], semantics[7])
         out.append(SIMD4(v.halfWidth, v.halfHeight, v.cornerX, v.cornerY))
-        out.append(SIMD4(Float(width), Float(height), 0, 0))
+        out.append(SIMD4(Float(width), Float(height), v.depthScale, v.depthOffset))
         out.append(v.clipPlane)
         return out
     }
@@ -48,13 +48,13 @@ enum PICAMetalVertex {
         uint4 outputs[2];    // output register of each mapped output
         uint4 semantics[2];  // its four 5-bit semantic slots, one per byte
         float4 viewport;     // half width, half height, corner x, corner y
-        float4 target;       // width, height
+        float4 target;       // width, height, depth scale, depth offset
         float4 clipPlane;
     };
     // Must match drawFragment's Varyings by name; clip distances exist only on the vertex side.
     struct VertexOut {
         float4 position [[position]];
-        float clip [[clip_distance]] [6];
+        float clip [[clip_distance]] [8];
         float depth [[center_no_perspective]];
         float w;
         float4 color, tex01, tex2W, quat, view, prev;
@@ -215,9 +215,11 @@ enum PICAMetalVertex {
         float4 p = float4(slots[0], slots[1], slots[2], slots[3]);
         // PICA view volume -w <= x, y <= w, -w <= z <= 0, w >= 1e-5, user plane; the viewport is folded into the target's clip space.
         o.position = float4(((p.x + p.w) * s.viewport.x + s.viewport.z * p.w) * 2 / s.target.x - p.w,
-                            p.w - ((p.y + p.w) * s.viewport.y + s.viewport.w * p.w) * 2 / s.target.y, -p.z, p.w);
+                            p.w - ((p.y + p.w) * s.viewport.y + s.viewport.w * p.w) * 2 / s.target.y, p.z * s.target.z + s.target.w * p.w, p.w);
         o.clip[0] = p.x + p.w; o.clip[1] = p.w - p.x; o.clip[2] = p.y + p.w; o.clip[3] = p.w - p.y; o.clip[4] = p.w - 0.00001;
         o.clip[5] = s.map.w != 0 ? dot(p, s.clipPlane) : 1;
+        // z is the scaled PICA depth (clamped by the depth clip mode, like the hardware), so -w <= z <= 0 is clipped here.
+        o.clip[6] = -p.z; o.clip[7] = p.z + p.w;
         o.depth = p.z / p.w; o.w = p.w;
         // The hardware takes the absolute value and saturates vertex colors before interpolation.
         o.color = min(abs(float4(slots[8], slots[9], slots[10], slots[11])), 1.0);

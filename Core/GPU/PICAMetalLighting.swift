@@ -11,7 +11,7 @@ extension PICAMetalShaders {
     }
 
     static float lightLookup(constant Draw &d, const device uint *lut, int input, float value, int table, bool twoSided) {
-        int4 i = d.inputs[input];
+        int4 i = CFG(45 + input, d.inputs[input]);
         float scale = d.scales[input / 4][input % 4], v = value, delta; int index;
         if (i.z != 0) {
             v = twoSided ? abs(v) : max(v, 0.0);
@@ -30,7 +30,7 @@ extension PICAMetalShaders {
         float4 q = quaternion / sqrt(dot(quaternion, quaternion));
         float3 normal = rotate(q, float3(0, 0, 1)), normView = normalize(view);
         float4 diffuse = float4(0, 0, 0, 1), specular = float4(0, 0, 0, 1);
-        int count = d.lighting.x;
+        int count = CFG(44, d.lighting).x;
         for (int n = 0; n < count; n++) {
             Light light = d.lights[n];
             bool twoSided = light.flags.y != 0;
@@ -40,7 +40,7 @@ extension PICAMetalShaders {
             float3 halfVector = normView + lightVector, halfNormalized = normalize(halfVector);
             float angles[6] = { dot(normal, halfNormalized), dot(normView, halfNormalized), dot(normal, normView),
                                 dot(lightVector, normal), dot(lightVector, light.spot.xyz), 0 };
-            #define VALUE(input, table) lightLookup(d, lut, input, angles[min(d.inputs[input].y, 5)], table, twoSided)
+            #define VALUE(input, table) lightLookup(d, lut, input, angles[min(CFG(45 + input, d.inputs[input]).y, 5)], table, twoSided)
             float distance = 1;
             if (light.more.z != 0) {
                 float at = clamp(light.distance.y * length + light.distance.x, 0.0, 1.0);
@@ -48,20 +48,20 @@ extension PICAMetalShaders {
                 distance = lightSample(lut, 16 + light.more.x, int(index), at * 256 - index);
             }
             float spot = light.more.y != 0 ? VALUE(6, 8 + light.more.x) : 1;
-            float3 specular0 = (d.inputs[0].x != 0 ? VALUE(0, d.inputs[0].w) : 1) * light.specular0.xyz;
-            float3 reflect = float3(d.inputs[3].x != 0 ? VALUE(3, d.inputs[3].w) : 1);
-            if (d.inputs[4].x != 0) reflect.y = VALUE(4, d.inputs[4].w);
-            if (d.inputs[5].x != 0) reflect.z = VALUE(5, d.inputs[5].w);
-            float3 specular1 = (d.inputs[1].x != 0 ? VALUE(1, d.inputs[1].w) : 1) * reflect * light.specular1.xyz;
-            if (n == count - 1 && d.inputs[2].x != 0) {
-                float f = VALUE(2, d.inputs[2].w);
-                if (d.lighting.z != 0) diffuse.w = f;
-                if (d.lighting.w != 0) specular.w = f;
+            float3 specular0 = (CFG(45, d.inputs[0]).x != 0 ? VALUE(0, CFG(45, d.inputs[0]).w) : 1) * light.specular0.xyz;
+            float3 reflect = float3(CFG(48, d.inputs[3]).x != 0 ? VALUE(3, CFG(48, d.inputs[3]).w) : 1);
+            if (CFG(49, d.inputs[4]).x != 0) reflect.y = VALUE(4, CFG(49, d.inputs[4]).w);
+            if (CFG(50, d.inputs[5]).x != 0) reflect.z = VALUE(5, CFG(50, d.inputs[5]).w);
+            float3 specular1 = (CFG(46, d.inputs[1]).x != 0 ? VALUE(1, CFG(46, d.inputs[1]).w) : 1) * reflect * light.specular1.xyz;
+            if (n == count - 1 && CFG(47, d.inputs[2]).x != 0) {
+                float f = VALUE(2, CFG(47, d.inputs[2]).w);
+                if (CFG(44, d.lighting).z != 0) diffuse.w = f;
+                if (CFG(44, d.lighting).w != 0) specular.w = f;
             }
             #undef VALUE
             float dd = dot(lightVector, normal);
             dd = twoSided ? abs(dd) : max(dd, 0.0);
-            float clampFactor = d.lighting.y != 0 && dd == 0 ? 0 : 1;
+            float clampFactor = CFG(44, d.lighting).y != 0 && dd == 0 ? 0 : 1;
             if (light.flags.z != 0 || light.flags.w != 0) {
                 float g = dot(halfVector, halfVector), factor = g == 0 ? 0 : min(dd / g, 1.0);
                 if (light.flags.z != 0) specular0 *= factor;

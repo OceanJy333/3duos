@@ -53,6 +53,7 @@
 		7A981947AD9C4A1320540ACF /* PICARasterizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52FDC6B0FC36F2C39B369E2 /* PICARasterizer.swift */; };
 		7C1EB50F26463A9A24AC35EC /* CFGService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622CF3A1112EEC4CE413DCE0 /* CFGService.swift */; };
 		7F6DC1E784B9DFB352CCCD6C /* PICAMetalFrames.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */; };
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* PICAMetalPipelines.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* PICAMetalPipelines.swift */; };
 		8201056E949D59F237039BDC /* ARM11Multiply.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B230414BF222EF4225779F2 /* ARM11Multiply.swift */; };
 		83E18202093563F5A962C4ED /* ARM11Saturate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110FAC969070A316C290C63B /* ARM11Saturate.swift */; };
 		8884B091FDC0BEAE94DA9611 /* PICAMetalBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */; };
@@ -142,6 +143,7 @@
 		7B0DE7386C67E49755843178 /* ARM11DataProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11DataProcessing.swift; sourceTree = "<group>"; };
 		7E725B804BE0E8D01C842814 /* ConsoleInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleInput.swift; sourceTree = "<group>"; };
 		8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalFrames.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* PICAMetalPipelines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalPipelines.swift; sourceTree = "<group>"; };
 		879D8A0C43CE3CD73982B6F2 /* ARM11Decode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Decode.swift; sourceTree = "<group>"; };
 		891A12DDAE6888A37E94024D /* MetalFXScreenPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalFXScreenPipeline.swift; sourceTree = "<group>"; };
 		89E95209FF6ECAD4319E780B /* PICATextureCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICATextureCache.swift; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 				24E86D02FCDCC5F4BA8463BE /* PICAMath.swift */,
 				6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */,
 				8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */,
+				B1C2D3E4F5A6B7C8D9E0F1A2 /* PICAMetalPipelines.swift */,
 				CA120DFFF787EBCC9A57DCCD /* PICAMetalKernels.swift */,
 				0989786F5A0440A1F5B5C652 /* PICAMetalLighting.swift */,
 				65693497CE0B5C8B033A5C1B /* PICAMetalShaders.swift */,
@@ -514,6 +517,7 @@
 				EDFA5726932EE8B7F6629FCF /* PICAMath.swift in Sources */,
 				8884B091FDC0BEAE94DA9611 /* PICAMetalBackend.swift in Sources */,
 				7F6DC1E784B9DFB352CCCD6C /* PICAMetalFrames.swift in Sources */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* PICAMetalPipelines.swift in Sources */,
 				2CE9AD80B9BAE04E33D5695D /* PICAMetalKernels.swift in Sources */,
 				BA4CE8BB0D9626B3B7E8ED06 /* PICAMetalLighting.swift in Sources */,
 				106CA0888942281B49355355 /* PICAMetalShaders.swift in Sources */,

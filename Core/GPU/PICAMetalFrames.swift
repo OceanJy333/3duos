@@ -6,7 +6,7 @@ import Metal
 
 // A display transfer rendered at the internal resolution. `color` is .rgba8Unorm in LCD orientation, (screen width x 240)
 // times `scale`, row 0 the top LCD row; `depth` is .r32Float of the same size (PICA depth 0...1). The GPU work is complete.
-// Top screen only: `motion` (.rg16Float, previous minus current in pixels of this frame), `reactive` (.r8Unorm),
+// Top screen only: `motion` (.rg16Float, previous minus current in pixels of this frame), `reactive` (.r8Unorm), `layer`,
 // `jitter` (the sub-pixel shift of its geometry, in LCD pixels) and the depth direction, for MetalFX.
 struct PICAHighResFrame {
     let color: MTLTexture
@@ -14,6 +14,7 @@ struct PICAHighResFrame {
     let scale: Int
     let sequence: Int
     var motion: MTLTexture?, reactive: MTLTexture?
+    var layer: MTLTexture?   // UI drawn over the scene: premultiplied rgb, alpha = scene transmittance; shown after MetalFX
     var jitter = SIMD2<Float>.zero
     var depthReversed = false
 }
@@ -77,6 +78,7 @@ extension PICAMetalBackend {
         }
         let color = make(.rgba8Unorm), depthPlane = make(.r32Float)
         let motion = source.motion.map { _ in make(.rg16Float) }, reactive = source.motion.map { _ in make(.r8Unorm) }
+        let layer = source.layer.map { _ in make(.rgba8Unorm) }
         endEncoder()
         let commandBuffer = makeCommandBuffer()
         guard let e = commandBuffer.makeComputeCommandEncoder() else { return false }
@@ -84,21 +86,40 @@ extension PICAMetalBackend {
         e.setTexture(source.texture, index: 0); e.setTexture(depth?.texture, index: 1)
         e.setTexture(color, index: 2); e.setTexture(depthPlane, index: 3)
         e.setTexture(source.motion, index: 4); e.setTexture(source.reactive, index: 5); e.setTexture(motion, index: 6); e.setTexture(reactive, index: 7)
+        e.setTexture(source.layer, index: 8); e.setTexture(layer, index: 9)
         var info = (Int32(transfer.inputHeight), Int32(transfer.outputHeight / scaleY), Int32(scaleX), Int32(scaleY),
                     Int32(transfer.flags & 1), Int32(scale), Int32(lcdWidth), Int32(depth == nil ? 0 : 1),
                     Float(depth.map { $0.format == 0 ? 65535 : 16_777_215 } ?? 1), Int32(motion == nil ? 0 : 1))
         e.setBytes(&info, length: MemoryLayout.size(ofValue: info), index: 0)
         e.dispatchThreads(MTLSize(width: size.0, height: size.1, depth: 1), threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
         e.endEncoding()
+        if source.layerUsed { mergeLayer(source) }
         var frame = PICAHighResFrame(color: color, depth: depth == nil ? nil : depthPlane, scale: scale, sequence: sequence)
         if motion != nil {
             // The same target-to-LCD mapping lcdTransfer applies to pixels: LCD column runs against target y (with the flip), row against x.
             let flip: Float = transfer.flags & 1 != 0 ? 1 : -1
-            (frame.motion, frame.reactive, frame.depthReversed) = (motion, reactive, depthReversed)
+            (frame.motion, frame.reactive, frame.layer, frame.depthReversed) = (motion, reactive, layer, depthReversed)
             frame.jitter = SIMD2(flip * shift.y / Float(scaleY), -shift.x / Float(scaleX))
         }
         commandBuffer.addCompletedHandler { _ in publish(frame) }
         submit()
         return true
+    }
+
+    // Composites `target`'s UI layer into it and empties the layer: under a later 3D draw, at write-back, and once the LCD image
+    // is taken (the guest's copy of the frame then shows its UI). The caller has ended the render encoder.
+    func mergeLayer(_ target: Target) {
+        guard let layer = target.layer else { return }
+        target.layerUsed = false
+        let commandBuffer = makeCommandBuffer(), merge = MTLRenderPassDescriptor()
+        merge.colorAttachments[0].texture = target.texture; merge.colorAttachments[0].loadAction = .load; merge.colorAttachments[0].storeAction = .store
+        if let e = commandBuffer.makeRenderCommandEncoder(descriptor: merge) {
+            e.setRenderPipelineState(uploads.layer); e.setFragmentTexture(layer, index: 0)
+            e.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3); e.endEncoding()
+        }
+        let clear = MTLRenderPassDescriptor()
+        clear.colorAttachments[0].texture = layer; clear.colorAttachments[0].loadAction = .clear; clear.colorAttachments[0].storeAction = .store
+        clear.colorAttachments[0].clearColor = MTLClearColor(red: 0, green: 0, blue: 0, alpha: 1)
+        commandBuffer.makeRenderCommandEncoder(descriptor: clear)?.endEncoding()
     }
 }

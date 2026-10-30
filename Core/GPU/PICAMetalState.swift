@@ -26,7 +26,9 @@ enum PICAMetalState {
         i(s.tevStages.count, m.alphaTestEnabled ? 1 : 0, m.alphaFunc, Int(m.alphaRef))
         c(s.tevBufferColor)
         i(s.textures[0].enabled ? 1 : 0, s.textures[1].enabled ? 1 : 0, s.textures[2].enabled ? 1 : 0, s.textures[0].type == 3 ? 1 : 0)
-        for u in 0..<3 { i(s.textures[u].wrapS, s.textures[u].wrapT, s.textures[u].linear ? 1 : 0, textures[u] == nil ? 0 : 1) }
+        // Filter 2: a UI-layer alpha glyph atlas (A8, A4), magnified with a sharp alpha edge instead of a bilinear blur.
+        func filter(_ t: PICATextureUnit) -> Int { s.overlay && (t.format == 8 || t.format == 11) ? 2 : t.linear ? 1 : 0 }
+        for u in 0..<3 { i(s.textures[u].wrapS, s.textures[u].wrapT, filter(s.textures[u]), textures[u] == nil ? 0 : 1) }
         for u in 0..<3 { i(textures[u]?.width ?? 1, textures[u]?.height ?? 1) }
         for u in 0..<3 { c(s.textures[u].border) }
         i(s.fog.enabled ? 1 : 0, s.fog.flip ? 1 : 0); c(s.fog.color)
@@ -59,13 +61,16 @@ enum PICAMetalState {
         var hasColor = true, hasDepth = true
         var blend = false, sourceRGB = 1, destRGB = 0, sourceAlpha = 1, destAlpha = 0, equationRGB = 0, equationAlpha = 0
         var writeMask = 15
-        var motion = false     // the target carries MetalFX motion and reactive attachments
+        var motion = false     // the target carries MetalFX motion, reactive and UI-layer attachments
+        var overlay = false    // draws only into the UI layer (attachment 3)
+        var fragmentDepth = false   // w-buffered: depth written per fragment; otherwise it comes from the rasterizer
     }
 
     static func pipelineKey(_ s: PICADrawState, hasColor: Bool, hasDepth: Bool, motion: Bool) -> PipelineKey {
         let m = s.merger
-        var k = PipelineKey(hasColor: hasColor, hasDepth: hasDepth, motion: motion)
+        var k = PipelineKey(hasColor: hasColor, hasDepth: hasDepth, motion: motion, overlay: motion && s.overlay)
         k.blend = m.blendEnabled
+        k.fragmentDepth = hasDepth && s.viewport.wBuffering
         if m.blendEnabled {
             k.sourceRGB = m.sourceRGB; k.destRGB = m.destRGB; k.sourceAlpha = m.sourceAlpha; k.destAlpha = m.destAlpha
             k.equationRGB = m.equationRGB; k.equationAlpha = m.equationAlpha
@@ -100,7 +105,17 @@ enum PICAMetalState {
             motion.isBlendingEnabled = k.blend; reactive.isBlendingEnabled = k.blend
             motion.sourceRGBBlendFactor = .sourceAlpha; motion.destinationRGBBlendFactor = .oneMinusSourceAlpha
             reactive.rgbBlendOperation = .max
-            if k.writeMask == 0 { motion.writeMask = []; reactive.writeMask = [] }
+            if k.writeMask == 0 || k.overlay { motion.writeMask = []; reactive.writeMask = [] }
+            // UI layer: premultiplied rgb blended like the draw, alpha the scene's transmittance T scaled by the draw's dest factor.
+            let layer = d.colorAttachments[3]!
+            layer.pixelFormat = .rgba8Unorm
+            layer.isBlendingEnabled = true
+            layer.sourceRGBBlendFactor = factors[min(k.sourceRGB, 14)]; layer.destinationRGBBlendFactor = factors[min(k.destRGB, 14)]
+            layer.sourceAlphaBlendFactor = .zero
+            layer.destinationAlphaBlendFactor = [MTLBlendFactor.zero, .one, .zero, .zero, .zero, .zero, .sourceAlpha, .oneMinusSourceAlpha,
+                                                 .zero, .zero, .zero, .zero, .blendAlpha, .oneMinusBlendAlpha, .zero][min(k.destRGB, 14)]
+            layer.writeMask = k.overlay && k.writeMask != 0 ? .all : []
+            if k.overlay, k.hasColor { d.colorAttachments[0].writeMask = [] }
         }
         if k.hasDepth { d.depthAttachmentPixelFormat = .depth32Float_stencil8; d.stencilAttachmentPixelFormat = .depth32Float_stencil8 }
     }

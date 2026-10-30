@@ -3,9 +3,20 @@
 // pos: GPU twin of PICAPixel/PICAFragment/PICALighting/PICAOutputMerger; integer TEV math matches the software rasterizer.
 
 enum PICAMetalShaders {
+    // Draw-state fields that select code paths, as int4 function constants: config slot k is `Draw` slot configSlots[k]
+    // (TEV stages and buffer updates, alpha test, texture units, fog, flags, logic op, lighting inputs). With `spec` the
+    // compiler folds them away (one pipeline per configuration); without it the same source is the uber shader.
+    static let configSlots = Array(0..<30) + Array(36..<42) + [42, 44, 45, 46, 47, 54, 56, 71, 60] + Array(61..<68)
+    static let specialization = "constant bool spec [[function_constant(0)]];\n"
+        + configSlots.indices.map { "constant int4 k\($0) [[function_constant(\($0 + 1))]];" }.joined(separator: "\n")
+        + "\nstatic int4 K(int i) { switch (i) { " + configSlots.indices.map { "case \($0): return k\($0);" }.joined(separator: " ")
+        + " default: return 0; } }\n#define CFG(i, dynamic) (spec ? K(i) : (dynamic))"
+
     static let draw = """
     #include <metal_stdlib>
     using namespace metal;
+
+    \(specialization)
 
     // Interpolants of PICAMetalVertex's VertexOut: z/w is affine on screen, w and the rest are perspective-correct.
     struct Varyings {
@@ -58,17 +69,21 @@ enum PICAMetalShaders {
     }
 
     static int4 sampleTexture(texture2d<uint> t, constant Draw &d, int unit, float u, float v) {
-        if (d.wrap[unit].w == 0) return int4(0, 0, 0, 255);
-        int w = d.size[unit].x, h = d.size[unit].y, ws = d.wrap[unit].x, wt = d.wrap[unit].y;
+        if (CFG(38 + unit, d.wrap[unit]).w == 0) return int4(0, 0, 0, 255);
+        int w = d.size[unit].x, h = d.size[unit].y, ws = CFG(38 + unit, d.wrap[unit]).x, wt = CFG(38 + unit, d.wrap[unit]).y;
         float x = u * float(w), y = v * float(h);
-        if (d.wrap[unit].z == 0) return texel(t, d, unit, wrapCoordinate(ws, int(floor(x)), w), wrapCoordinate(wt, int(floor(y)), h));
+        if (CFG(38 + unit, d.wrap[unit]).z == 0) return texel(t, d, unit, wrapCoordinate(ws, int(floor(x)), w), wrapCoordinate(wt, int(floor(y)), h));
         float fx = x - 0.5, fy = y - 0.5, x0 = floor(fx), y0 = floor(fy);
         int wx = int((fx - x0) * 256), wy = int((fy - y0) * 256), ix = int(x0), iy = int(y0);
         int sx0 = wrapCoordinate(ws, ix, w), sx1 = wrapCoordinate(ws, ix + 1, w);
         int sy0 = wrapCoordinate(wt, iy, h), sy1 = wrapCoordinate(wt, iy + 1, h);
         int4 top = texel(t, d, unit, sx0, sy0) * (256 - wx) + texel(t, d, unit, sx1, sy0) * wx;
         int4 bottom = texel(t, d, unit, sx0, sy1) * (256 - wx) + texel(t, d, unit, sx1, sy1) * wx;
-        return (top * (256 - wy) + bottom * wy) >> 16;
+        int4 s = (top * (256 - wy) + bottom * wy) >> 16;
+        if (CFG(38 + unit, d.wrap[unit]).z != 2) return s;
+        // Glyph coverage read as a distance field: cut at half coverage, antialiased over one output pixel.
+        float a = float(s.w) / 255, edge = max(fwidth(a) * 0.5, 0.02);
+        return int4(s.xyz, int(smoothstep(0.5 - edge, 0.5 + edge, a) * 255 + 0.5));
     }
 
     static int4 divide255(int4 x) { int4 t = x + 1; return (t + (t >> 8)) >> 8; }
@@ -119,17 +134,37 @@ enum PICAMetalShaders {
     \(lighting)
 
     // motion: previous minus current position in render-target pixels, blended by coverage; reactive: how much MetalFX
-    // must trust this frame over history (translucent effects and text).
-    struct Output { float4 color [[color(0)]]; float4 motion [[color(1)]]; float4 reactive [[color(2)]]; float depth [[depth(any)]]; };
+    // must trust this frame over history (translucent effects; text and HUD go to the UI layer instead).
+    struct Shaded { float4 color, motion, reactive, layer; float depth; };
+    struct Output { float4 color [[color(0)]]; float4 motion [[color(1)]]; float4 reactive [[color(2)]]; float4 layer [[color(3)]]; };
+    struct DepthOutput { float4 color [[color(0)]]; float4 motion [[color(1)]]; float4 reactive [[color(2)]]; float4 layer [[color(3)]]; float depth [[depth(any)]]; };
 
+    static Shaded shade(Varyings in, constant Draw &d, const device uint *lut, const device uint *fog, constant MotionInfo &mi,
+                        texture2d<uint> tex0, texture2d<uint> tex1, texture2d<uint> tex2);
+
+    // Depth comes from the rasterizer (the vertex shader's z), so the GPU keeps early depth tests and hidden-surface removal.
     fragment Output drawFragment(Varyings in [[stage_in]], constant Draw &d [[buffer(1)]], const device uint *lut [[buffer(2)]],
                                  const device uint *fog [[buffer(3)]], constant MotionInfo &mi [[buffer(4)]],
                                  texture2d<uint> tex0 [[texture(0)]], texture2d<uint> tex1 [[texture(1)]], texture2d<uint> tex2 [[texture(2)]]) {
+        Shaded s = shade(in, d, lut, fog, mi, tex0, tex1, tex2);
+        return { s.color, s.motion, s.reactive, s.layer };
+    }
+
+    // W-buffered draws: depth is not affine on screen, so it is written per fragment.
+    fragment DepthOutput drawFragmentDepth(Varyings in [[stage_in]], constant Draw &d [[buffer(1)]], const device uint *lut [[buffer(2)]],
+                                 const device uint *fog [[buffer(3)]], constant MotionInfo &mi [[buffer(4)]],
+                                 texture2d<uint> tex0 [[texture(0)]], texture2d<uint> tex1 [[texture(1)]], texture2d<uint> tex2 [[texture(2)]]) {
+        Shaded s = shade(in, d, lut, fog, mi, tex0, tex1, tex2);
+        return { s.color, s.motion, s.reactive, s.layer, s.depth };
+    }
+
+    static Shaded shade(Varyings in, constant Draw &d, const device uint *lut, const device uint *fog, constant MotionInfo &mi,
+                        texture2d<uint> tex0, texture2d<uint> tex1, texture2d<uint> tex2) {
         float2 pixel = floor(in.position.xy / d.depth.w);
-        if (d.flags.z != 0 && pixel.x >= d.scissor.x && pixel.x <= d.scissor.z && pixel.y >= d.scissor.y && pixel.y <= d.scissor.w) discard_fragment();
+        if (CFG(42, d.flags).z != 0 && pixel.x >= d.scissor.x && pixel.x <= d.scissor.z && pixel.y >= d.scissor.y && pixel.y <= d.scissor.w) discard_fragment();
         if (!(in.w > 0)) discard_fragment();
         float depth = in.depth * d.depth.x + d.depth.y;
-        if (d.flags.y != 0) depth *= in.w;
+        if (CFG(42, d.flags).y != 0) depth *= in.w;
         float clamped = depth > 0 ? min(depth, 1.0) : 0;
         uint z = uint(clamped * d.depth.z);
         Sources s;
@@ -137,45 +172,45 @@ enum PICAMetalShaders {
         s.primary = int4(select(int4(0), int4(min(c, 255.0) + 0.5), c > 0));
         s.lit0 = s.lit1 = s.t0 = s.t1 = s.t2 = int4(0);
         float4 uv01 = in.tex01, uv2W = in.tex2W;
-        if (d.textureEnabled.x != 0) s.t0 = d.textureEnabled.w != 0 ? sampleTexture(tex0, d, 0, uv01.x / uv2W.z, uv01.y / uv2W.z)
+        if (CFG(37, d.textureEnabled).x != 0) s.t0 = CFG(37, d.textureEnabled).w != 0 ? sampleTexture(tex0, d, 0, uv01.x / uv2W.z, uv01.y / uv2W.z)
                                                                      : sampleTexture(tex0, d, 0, uv01.x, uv01.y);
-        if (d.textureEnabled.y != 0) s.t1 = sampleTexture(tex1, d, 1, uv01.z, uv01.w);
-        if (d.textureEnabled.z != 0) s.t2 = d.flags.x != 0 ? sampleTexture(tex2, d, 2, uv01.z, uv01.w) : sampleTexture(tex2, d, 2, uv2W.x, uv2W.y);
-        if (d.flags.w != 0) lightFragment(d, lut, in.quat, in.view.xyz, s.lit0, s.lit1);
+        if (CFG(37, d.textureEnabled).y != 0) s.t1 = sampleTexture(tex1, d, 1, uv01.z, uv01.w);
+        if (CFG(37, d.textureEnabled).z != 0) s.t2 = CFG(42, d.flags).x != 0 ? sampleTexture(tex2, d, 2, uv01.z, uv01.w) : sampleTexture(tex2, d, 2, uv2W.x, uv2W.y);
+        if (CFG(42, d.flags).w != 0) lightFragment(d, lut, in.quat, in.view.xyz, s.lit0, s.lit1);
         int4 output = int4(0), buffer = int4(0), nextBuffer = d.bufferColor;
-        for (int i = 0; i < d.misc.x; i++) {
+        for (int i = 0, stages = CFG(36, d.misc).x; i < 6 && i < stages; i++) {
             s.buf = buffer; s.konst = d.constants[i]; s.previous = output;
-            int3 cs = d.colorSource[i].xyz;
+            int3 cs = CFG(i, d.colorSource[i]).xyz;
             if (i == 0 && cs.x == 15) cs.x = cs.z;
             if (i == 0 && cs.y == 15) cs.y = cs.z;
-            int4 color = combine(d.ops[i].x, colorModifier(d.colorModifier[i].x, source(s, cs.x)),
-                                 colorModifier(d.colorModifier[i].y, source(s, cs.y)), colorModifier(d.colorModifier[i].z, source(s, d.colorSource[i].z)));
+            int4 color = combine(CFG(24 + i, d.ops[i]).x, colorModifier(CFG(12 + i, d.colorModifier[i]).x, source(s, cs.x)),
+                                 colorModifier(CFG(12 + i, d.colorModifier[i]).y, source(s, cs.y)), colorModifier(CFG(12 + i, d.colorModifier[i]).z, source(s, CFG(i, d.colorSource[i]).z)));
             int alpha;
-            if (d.ops[i].x == 7) alpha = color.x;
-            else alpha = combine(d.ops[i].y, int4(alphaModifier(d.alphaModifier[i].x, source(s, d.alphaSource[i].x))),
-                                 int4(alphaModifier(d.alphaModifier[i].y, source(s, d.alphaSource[i].y))),
-                                 int4(alphaModifier(d.alphaModifier[i].z, source(s, d.alphaSource[i].z)))).x;
-            color = min(color * d.ops[i].z, 255);
-            output = int4(color.xyz, min(alpha * d.ops[i].w, 255));
+            if (CFG(24 + i, d.ops[i]).x == 7) alpha = color.x;
+            else alpha = combine(CFG(24 + i, d.ops[i]).y, int4(alphaModifier(CFG(18 + i, d.alphaModifier[i]).x, source(s, CFG(6 + i, d.alphaSource[i]).x))),
+                                 int4(alphaModifier(CFG(18 + i, d.alphaModifier[i]).y, source(s, CFG(6 + i, d.alphaSource[i]).y))),
+                                 int4(alphaModifier(CFG(18 + i, d.alphaModifier[i]).z, source(s, CFG(6 + i, d.alphaSource[i]).z)))).x;
+            color = min(color * CFG(24 + i, d.ops[i]).z, 255);
+            output = int4(color.xyz, min(alpha * CFG(24 + i, d.ops[i]).w, 255));
             buffer = nextBuffer;
-            if (d.bufferUpdate[i].x != 0) nextBuffer = int4(output.xyz, nextBuffer.w);
-            if (d.bufferUpdate[i].y != 0) nextBuffer.w = output.w;
+            if (CFG(30 + i, d.bufferUpdate[i]).x != 0) nextBuffer = int4(output.xyz, nextBuffer.w);
+            if (CFG(30 + i, d.bufferUpdate[i]).y != 0) nextBuffer.w = output.w;
         }
-        if (d.misc.y != 0) {
+        if (CFG(36, d.misc).y != 0) {
             int a = output.w, r = d.misc.w;
-            bool pass = d.misc.z == 0 ? false : d.misc.z == 1 ? true : d.misc.z == 2 ? a == r : d.misc.z == 3 ? a != r
-                      : d.misc.z == 4 ? a < r : d.misc.z == 5 ? a <= r : d.misc.z == 6 ? a > r : a >= r;
+            bool pass = CFG(36, d.misc).z == 0 ? false : CFG(36, d.misc).z == 1 ? true : CFG(36, d.misc).z == 2 ? a == r : CFG(36, d.misc).z == 3 ? a != r
+                      : CFG(36, d.misc).z == 4 ? a < r : CFG(36, d.misc).z == 5 ? a <= r : CFG(36, d.misc).z == 6 ? a > r : a >= r;
             if (!pass) discard_fragment();
         }
-        if (d.fog.x != 0) {
-            float index = (d.fog.y != 0 ? 1 - clamped : clamped) * 128, i = clamp(floor(index), 0.0, 127.0);
+        if (CFG(41, d.fog).x != 0) {
+            float index = (CFG(41, d.fog).y != 0 ? 1 - clamped : clamped) * 128, i = clamp(floor(index), 0.0, 127.0);
             uint entry = fog[int(i)];
             float difference = float(int(entry << 19) >> 19) / 2047;
             float factor = clamp(float((entry >> 13) & 0x7FF) / 2047 + difference * (index - i), 0.0, 1.0);
             output.xyz = int3(float3(output.xyz) * factor + float3(d.fogColor.xyz) * (1 - factor));
         }
-        if (d.logic.x == 1) output = int4(0); else if (d.logic.x == 2) output = int4(255); else if (d.logic.x == 3) output = 255 - output;
-        Output o;
+        if (CFG(43, d.logic).x == 1) output = int4(0); else if (CFG(43, d.logic).x == 2) output = int4(255); else if (CFG(43, d.logic).x == 3) output = 255 - output;
+        Shaded o;
         o.color = float4(output) / 255;
         float4 p = in.prev;
         float2 m = 0;
@@ -186,6 +221,7 @@ enum PICAMetalShaders {
         float coverage = mi.blend == 0 ? 1 : mi.alphaCoverage != 0 ? o.color.w : max3(o.color.x, o.color.y, o.color.z);
         o.motion = float4(m * d.depth.w, 0, coverage);
         o.reactive = float4(mi.blend != 0 ? coverage : 0);
+        o.layer = o.color;   // the UI layer blends the same color (PICAMetalState)
         o.depth = float(z) / 16777216.0;
         return o;
     }
