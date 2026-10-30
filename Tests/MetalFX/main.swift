@@ -1,85 +1,149 @@
-// Input: a synthetic RGBA texture on the local Metal device.
-// Output: a GPU completion and readback check of four scaled color regions.
-// Pos: standalone Metal 4 MetalFX Spatial experiment, independent of the app.
+// Input: a synthetic panning scene rendered on the CPU, scale factor as optional argument.
+// Output: PSNR of every MetalFX mode against the native high-resolution scene, and interpolation against its midpoint.
+// Pos: standalone MetalFX pipeline check, independent of the app.
 import Foundation
 import Metal
-import MetalFX
 
 let device = MTLCreateSystemDefaultDevice()!
-guard MTLFXSpatialScalerDescriptor.supportsMetal4FX(device) else {
-    print("SKIP: \(device.name) does not support Metal 4 MetalFX Spatial")
-    exit(0)
-}
-let width = 64, height = 64, outWidth = 128, outHeight = 128
-let descriptor = MTLTextureDescriptor.texture2DDescriptor(
-    pixelFormat: .rgba8Unorm, width: width, height: height, mipmapped: false)
-descriptor.storageMode = .shared
-descriptor.usage = [.shaderRead, .shaderWrite, .renderTarget]
-let input = device.makeTexture(descriptor: descriptor)!
-var pixels = [UInt8](repeating: 0, count: width * height * 4)
-for y in 0..<height {
-    for x in 0..<width {
-        let offset = (y * width + x) * 4
-        let color: [UInt8] = y < height / 2 ? (x < width / 2 ? [255, 0, 0] : [0, 255, 0])
-                                               : (x < width / 2 ? [0, 0, 255] : [255, 255, 0])
-        pixels.replaceSubrange(offset..<offset + 4, with: color + [255])
-    }
-}
-pixels.withUnsafeBytes {
-    input.replace(region: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0,
-                  withBytes: $0.baseAddress!, bytesPerRow: width * 4)
-}
-do {
-    _ = try MetalFXSpatial(device: device, input: input, outputWidth: width - 1, outputHeight: height)
-    fatalError("Downscaling was accepted")
-} catch MetalFXSpatialError.invalidSize {}
-let unusableDescriptor = MTLTextureDescriptor.texture2DDescriptor(
-    pixelFormat: .rgba8Unorm, width: width, height: height, mipmapped: false)
-unusableDescriptor.textureType = .type2DArray
-unusableDescriptor.arrayLength = 2
-unusableDescriptor.usage = [.shaderRead, .shaderWrite, .renderTarget]
-let unusable = device.makeTexture(descriptor: unusableDescriptor)!
-do {
-    _ = try MetalFXSpatial(device: device, input: unusable, outputWidth: outWidth, outputHeight: outHeight)
-    fatalError("2D array input was accepted")
-} catch MetalFXSpatialError.incompatibleInput {}
-let spatial = try MetalFXSpatial(device: device, input: input, outputWidth: outWidth, outputHeight: outHeight)
-precondition(spatial.output.width == outWidth && spatial.output.height == outHeight)
-let residency = try device.makeResidencySet(descriptor: MTLResidencySetDescriptor())
-residency.addAllocation(input)
-residency.addAllocation(spatial.output)
-residency.commit()
-let queue = device.makeMTL4CommandQueue()!
-queue.addResidencySet(residency)
-let allocator = device.makeCommandAllocator()!
-let command = device.makeCommandBuffer()!
-command.beginCommandBuffer(allocator: allocator)
-spatial.encode(to: command)
-command.endCommandBuffer()
-queue.commit([command])
-let event = device.makeSharedEvent()!
-queue.signalEvent(event, value: 1)
-precondition(event.wait(untilSignaledValue: 1, timeoutMS: 10_000), "Metal 4 GPU did not complete")
+let queue = device.makeCommandQueue()!
+let width = 400, height = 240
+let scale = CommandLine.arguments.count > 1 ? Int(CommandLine.arguments[1])! : 2
 
-let readback = device.makeBuffer(length: outWidth * outHeight * 4, options: .storageModeShared)!
-let readCommand = device.makeCommandQueue()!.makeCommandBuffer()!
-let blit = readCommand.makeBlitCommandEncoder()!
-blit.copy(from: spatial.output, sourceSlice: 0, sourceLevel: 0,
-          sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
-          sourceSize: MTLSize(width: outWidth, height: outHeight, depth: 1),
-          to: readback, destinationOffset: 0, destinationBytesPerRow: outWidth * 4,
-          destinationBytesPerImage: outWidth * outHeight * 4)
-blit.endEncoding()
-readCommand.commit()
-readCommand.waitUntilCompleted()
-precondition(readCommand.status == .completed, "Readback failed: \(String(describing: readCommand.error))")
-let result = readback.contents().bindMemory(to: UInt8.self, capacity: outWidth * outHeight * 4)
-for (x, y, expected) in [(32, 32, [255, 0, 0]), (96, 32, [0, 255, 0]),
-                          (32, 96, [0, 0, 255]), (96, 96, [255, 255, 0])] {
-    let offset = (y * outWidth + x) * 4
-    let actual = (0..<4).map { Int(result[offset + $0]) }
-    precondition(zip(actual.prefix(3), expected).allSatisfy { abs($0 - $1) <= 8 } && actual[3] >= 247,
-                 "Unexpected pixel at \(x),\(y): \(actual), expected \(expected)")
-    print("(\(x),\(y)): \(actual)")
+// Pixel colour at sub-pixel time `t` (frames); `sample` positions the pixel centre in input pixels.
+func scene(_ x: Double, _ y: Double, _ t: Double) -> [UInt8] {
+    let u = x + 3 * t
+    let checker = (Int(floor(u / 6)) + Int(floor(y / 6))) & 1 == 0
+    var r = 0.25 + 0.5 * x / Double(width), g = 0.3 + 0.4 * y / Double(height), b = checker ? 0.85 : 0.2
+    let dx = x - (120 + 5 * t), dy = y - 120
+    if dx * dx + dy * dy < 40 * 40 { (r, g, b) = (0.95, 0.15, 0.1) }
+    return [UInt8(r * 255), UInt8(g * 255), UInt8(b * 255), 255]
 }
-print("PASS: Metal 4 MetalFX Spatial \(width)x\(height) -> \(outWidth)x\(outHeight) on \(device.name)")
+
+// `shift` moves the geometry by that many input pixels, the way the PICA renderer jitters its viewport.
+func render(scale s: Int, t: Double, shift: SIMD2<Double> = .zero) -> [UInt8] {
+    var out = [UInt8](repeating: 0, count: width * s * height * s * 4)
+    for y in 0..<height * s {
+        for x in 0..<width * s {
+            let p = scene((Double(x) + 0.5) / Double(s) - 0.5 - shift.x, (Double(y) + 0.5) / Double(s) - 0.5 - shift.y, t)
+            out.replaceSubrange((y * width * s + x) * 4..<(y * width * s + x) * 4 + 4, with: p)
+        }
+    }
+    return out
+}
+
+func bilinear(_ low: [UInt8]) -> [UInt8] {
+    var out = [UInt8](repeating: 255, count: width * scale * height * scale * 4)
+    for y in 0..<height * scale {
+        for x in 0..<width * scale {
+            let fx = max(0, min(Double(width - 1), (Double(x) + 0.5) / Double(scale) - 0.5))
+            let fy = max(0, min(Double(height - 1), (Double(y) + 0.5) / Double(scale) - 0.5))
+            let x0 = Int(fx), y0 = Int(fy), x1 = min(width - 1, x0 + 1), y1 = min(height - 1, y0 + 1)
+            let ax = fx - Double(x0), ay = fy - Double(y0)
+            for c in 0..<3 {
+                let top = Double(low[(y0 * width + x0) * 4 + c]) * (1 - ax) + Double(low[(y0 * width + x1) * 4 + c]) * ax
+                let bottom = Double(low[(y1 * width + x0) * 4 + c]) * (1 - ax) + Double(low[(y1 * width + x1) * 4 + c]) * ax
+                out[(y * width * scale + x) * 4 + c] = UInt8(top * (1 - ay) + bottom * ay)
+            }
+        }
+    }
+    return out
+}
+
+func psnr(_ a: [UInt8], _ b: [UInt8]) -> Double {
+    var sum = 0.0
+    for i in stride(from: 0, to: a.count, by: 4) {
+        for c in 0..<3 { let d = Double(a[i + c]) - Double(b[i + c]); sum += d * d }
+    }
+    return 10 * log10(255 * 255 / max(sum / Double(a.count / 4 * 3), 1e-9))
+}
+
+func readback(_ texture: MTLTexture, waiting fence: MTLFence?) -> [UInt8] {
+    let bytes = texture.width * texture.height * 4
+    let buffer = device.makeBuffer(length: bytes, options: .storageModeShared)!
+    let command = queue.makeCommandBuffer()!
+    let blit = command.makeBlitCommandEncoder()!
+    if let fence { blit.waitForFence(fence) }
+    blit.copy(from: texture, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+              sourceSize: MTLSize(width: texture.width, height: texture.height, depth: 1),
+              to: buffer, destinationOffset: 0, destinationBytesPerRow: texture.width * 4,
+              destinationBytesPerImage: bytes)
+    blit.endEncoding()
+    command.commit()
+    command.waitUntilCompleted()
+    return Array(UnsafeBufferPointer(start: buffer.contents().bindMemory(to: UInt8.self, capacity: bytes), count: bytes))
+}
+
+func run(_ mode: MetalFXMode, interpolate: Bool) throws -> Bool {
+    let name = mode.title + (interpolate ? " + Frame Interpolation" : "")
+    let pipeline: MetalFXScreenPipeline
+    do {
+        pipeline = try MetalFXScreenPipeline(device: device, width: width, height: height, outWidth: width * scale, outHeight: height * scale,
+                                             mode: mode, interpolates: interpolate)
+    } catch MetalFXError.unsupported(let what) {
+        print("SKIP \(name): \(what) unsupported on \(device.name)")
+        return true
+    }
+    let frames = 16
+    var last: [UInt8] = [], mid: [UInt8] = []
+    for n in 0..<frames {
+        let low = render(scale: 1, t: Double(n))
+        low.withUnsafeBytes { pipeline.upload(rgba: $0.baseAddress!) }
+        let command = queue.makeCommandBuffer()!
+        pipeline.encode(commandBuffer: command)
+        command.commit()
+        command.waitUntilCompleted()
+        precondition(command.status == .completed, "\(name): \(String(describing: command.error))")
+        if n == frames - 1 {
+            last = readback(pipeline.output, waiting: pipeline.fence)
+            if let interpolated = pipeline.interpolated { mid = readback(interpolated, waiting: pipeline.fence) }
+        }
+    }
+    let truth = render(scale: scale, t: Double(frames - 1))
+    let baseline = bilinear(render(scale: 1, t: Double(frames - 1)))
+    let score = psnr(last, truth), base = psnr(baseline, truth)
+    print(String(format: "%@: frame PSNR %.2f dB (bilinear %.2f dB)", name, score, base))
+    var ok = score > base - 3
+    if interpolate {
+        let midTruth = render(scale: scale, t: Double(frames) - 1.5)
+        let blend = zip(bilinear(render(scale: 1, t: Double(frames) - 2)), baseline).map { UInt8((Int($0) + Int($1)) / 2) }
+        let interpolatedScore = psnr(mid, midTruth), blendScore = psnr(blend, midTruth), copyScore = psnr(last, midTruth)
+        print(String(format: "  midpoint PSNR %.2f dB (cross-fade %.2f dB, current frame %.2f dB)",
+                     interpolatedScore, blendScore, copyScore))
+        if let dir = ProcessInfo.processInfo.environment["DUMP_DIR"] {
+            for (label, pixels) in [("mid", mid), ("last", last), ("truth", midTruth)] {
+                var ppm = Data("P6\n\(width * scale) \(height * scale)\n255\n".utf8)
+                for i in stride(from: 0, to: pixels.count, by: 4) { ppm.append(contentsOf: pixels[i..<i + 3]) }
+                try ppm.write(to: URL(fileURLWithPath: "\(dir)/\(mode.title)-\(label).ppm"))
+            }
+        }
+        ok = ok && interpolatedScore > copyScore && interpolatedScore > blendScore
+    }
+    return ok
+}
+
+// A static scene rendered with Halton jitter: MetalFX must be told the same offset the geometry moved by.
+func jitterScore(sign: Float) throws -> Double {
+    let pipeline = try MetalFXScreenPipeline(device: device, width: width, height: height, outWidth: width * scale,
+                                             outHeight: height * scale, mode: .temporal, interpolates: false)
+    func halton(_ i: Int, _ b: Int) -> Double { var f = 1.0, r = 0.0, i = i; while i > 0 { f /= Double(b); r += f * Double(i % b); i /= b }; return r }
+    let zero = [SIMD2<Float>](repeating: .zero, count: width * height)
+    for n in 0..<24 {
+        let j = SIMD2(halton(n % 8 + 1, 2) - 0.5, halton(n % 8 + 1, 3) - 0.5)
+        render(scale: 1, t: 0, shift: j).withUnsafeBytes { pipeline.upload(rgba: $0.baseAddress!, motion: zero) }
+        pipeline.jitter = SIMD2<Float>(j) * sign
+        let command = queue.makeCommandBuffer()!
+        pipeline.encode(commandBuffer: command)
+        command.commit(); command.waitUntilCompleted()
+    }
+    return psnr(readback(pipeline.output, waiting: nil), render(scale: scale, t: 0))
+}
+
+var passed = true
+for (mode, interpolate) in [(MetalFXMode.spatial, false), (.temporal, false), (.temporal, true)] {
+    passed = try run(mode, interpolate: interpolate) && passed
+}
+let same = try jitterScore(sign: 1), opposite = try jitterScore(sign: -1)
+print(String(format: "Jitter: offset = geometry shift %.2f dB, negated %.2f dB", same, opposite))
+passed = passed && same > opposite
+print(passed ? "PASS: MetalFX pipeline on \(device.name), scale \(scale)" : "FAIL")
+exit(passed ? 0 : 1)

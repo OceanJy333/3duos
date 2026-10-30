@@ -30,6 +30,34 @@ final class RAM: ARMMemory {
     }
 }
 
+// Two pages published through an ARMPageTable: page 0 read/write, page 1 read-only.
+final class PagedRAM: ARMMemory {
+    let bytes = UnsafeMutableRawPointer.allocate(byteCount: 8192, alignment: 4096)
+    let table = ARMPageTable()
+    var pageTable: ARMPageTable? { table }
+    init() {
+        bytes.initializeMemory(as: UInt8.self, repeating: 0, count: 8192)
+        table.set(page: 0, read: bytes, write: bytes)
+        table.set(page: 1, read: bytes + 4096, write: nil)
+    }
+    func read8(_ address: UInt32) throws -> UInt8 {
+        guard address < 8192 else { throw TestFault.address(address) }
+        return bytes.load(fromByteOffset: Int(address), as: UInt8.self)
+    }
+    func read32(_ address: UInt32) throws -> UInt32 {
+        guard address & 3 == 0, address < 8192 else { throw TestFault.address(address) }
+        return bytes.load(fromByteOffset: Int(address), as: UInt32.self)
+    }
+    func write8(_ address: UInt32, _ value: UInt8) throws {
+        guard address < 4096 else { throw TestFault.address(address) }
+        bytes.storeBytes(of: value, toByteOffset: Int(address), as: UInt8.self)
+    }
+    func write32(_ address: UInt32, _ value: UInt32) throws {
+        guard address & 3 == 0, address < 4096 else { throw TestFault.address(address) }
+        bytes.storeBytes(of: value, toByteOffset: Int(address), as: UInt32.self)
+    }
+}
+
 var assertions = 0
 func check(_ expression: @autoclosure () -> Bool, _ description: String) {
     assertions += 1
@@ -338,13 +366,52 @@ do {
     let conditionalExtend = RAM(), conditionalExtendCPU = ARM11CPU()
     try conditionalExtend.load([0x06FF3073]); conditionalExtendCPU.registers[3] = 0x1234_5678
     check(conditionalExtendCPU.step(memory: conditionalExtend) == .running && conditionalExtendCPU.registers[3] == 0x1234_5678 && conditionalExtendCPU.pc == 4, "failed UXTH condition is skipped")
-    for op: UInt32 in [0xE6FFF073, 0xE6FF307F, 0xE6FF3173, 0xE6F13073] {
+    let accumulate = RAM(), accumulateCPU = ARM11CPU()
+    try accumulate.load([0xE6F13073]); accumulateCPU.registers[1] = 0x10; accumulateCPU.registers[3] = 0xABCD_8001
+    check(accumulateCPU.step(memory: accumulate) == .running && accumulateCPU.registers[3] == 0x8011, "UXTAH adds the zero-extended halfword")
+    let saturating = RAM(), saturatingCPU = ARM11CPU()
+    try saturating.load([0xE6E7A010, 0xE6A7B010]); saturatingCPU.registers[0] = 300
+    check(saturatingCPU.step(memory: saturating) == .running && saturatingCPU.registers[10] == 127, "USAT #7 clamps high")
+    saturatingCPU.registers[0] = UInt32(bitPattern: -300)
+    check(saturatingCPU.step(memory: saturating) == .running && Int32(bitPattern: saturatingCPU.registers[11]) == -128, "SSAT #8 clamps negative")
+    for op: UInt32 in [0xE6FFF073, 0xE6FF307F, 0xE6FF3173] {
         let memory = RAM(), core = ARM11CPU(); try memory.load([op])
         check(core.step(memory: memory) == .undefined(0, op) && core.pc == 0, "invalid or unsupported extend encoding \(String(op, radix: 16))")
     }
 
-    let (unknown, _, unknownStop) = try run([0xE0000090])
-    check(unknownStop == .undefined(0, 0xE0000090) && unknown.pc == 0 && unknown.instructionCount == 1, "undefined multiply")
+    // Pre-decoded fast forms with host pages must match the full decoder step for step.
+    let mixed: [UInt32] = [
+        0xE5913004, 0xE5B14008, 0xE4915004, 0xE5D16001, 0xE7917102, 0xE5813010, 0xE5C14011, 0xE1D180B2,
+        0xE1D190F3, 0xE1D1A0D5, 0xE1C1B0B6, 0xE1C140D8, 0xE1C141F8, 0xE92D000F, 0xE8BD00F0, 0xE9910005,
+        0xE0912003, 0xE0B23004, 0xE0D34005, 0xE0F45006, 0xE1B06067, 0xE1B07048, 0xE1B08029, 0xE0190A92,
+        0xE0294A93, 0xE3530000, 0xE2833104, 0xE3B0A102, 0xED910A02, 0xED911B04, 0xEE200A00, 0xEE000A20,
+        0xED810A08, 0xED811B0A, 0xE59FC000, 0xE28FB000, 0xECA10A02, 0xED310A02, 0xECB10B04, 0x15813000, 0xE4C12001, 0xEF000001]
+    func prepare(_ memory: ARMMemory, _ core: ARM11CPU) throws {
+        for (i, op) in mixed.enumerated() { try memory.write32(UInt32(i * 4), op) }
+        for i in 0..<64 { try memory.write32(0x100 + UInt32(i * 4), 0x3F80_0000 &+ UInt32(i) &* 0x0101_0731) }
+        core.registers[1] = 0x100; core.registers[2] = 3; core.registers[11] = 0xBEEF; core.registers[13] = 0x300
+        core.fpexc = 0x4000_0000
+    }
+    let referenceRAM = RAM(4096), reference = ARM11CPU(), slowRAM = RAM(4096), slow = ARM11CPU()
+    let paged = PagedRAM(), fast = ARM11CPU()
+    try prepare(referenceRAM, reference); try prepare(slowRAM, slow); try prepare(paged, fast)
+    var referenceStop = ARMStop.running
+    while case .running = referenceStop { referenceStop = reference.execute(try referenceRAM.read32(reference.pc), at: reference.pc, memory: referenceRAM) }
+    let slowRun = slow.run(memory: slowRAM, limit: 100), fastRun = fast.run(memory: paged, limit: 100)
+    check(slowRun.stop == referenceStop && fastRun.stop == referenceStop && fastRun.executed == mixed.count, "fast forms stop at the same SVC")
+    for core in [slow, fast] {
+        check(Array(core.registers) == Array(reference.registers) && core.cpsr == reference.cpsr &&
+              Array(core.vfpSingles) == Array(reference.vfpSingles), "fast forms match the full decoder")
+    }
+    let storesMatch = try (0..<1024).allSatisfy { try paged.read32(UInt32($0 * 4)) == referenceRAM.read32(UInt32($0 * 4)) }
+    check(storesMatch, "host-page stores match")
+    let guarded = PagedRAM(), guardedCPU = ARM11CPU()
+    try guarded.write32(0, 0xE5812000); guardedCPU.registers[1] = 0x1000   // STR into the read-only page
+    if case .memoryFault(0, "address(4096)") = guardedCPU.run(memory: guarded, limit: 1).stop { check(guardedCPU.pc == 0, "read-only host page falls back to the memory's fault") }
+    else { fatalError("missing read-only fault") }
+
+    let (unknown, _, unknownStop) = try run([0xE7F000F0])
+    check(unknownStop == .undefined(0, 0xE7F000F0) && unknown.pc == 0 && unknown.instructionCount == 1, "permanently undefined encoding")
     let (thumb, _, thumbStop) = try run([0xE12FFF10]) { $0.registers[0] = 9 }
     check(thumbStop == .unsupportedThumb(8) && thumb.pc == 8 && thumb.instructionCount == 1, "BX Thumb boundary")
     let (fault, _, faultStop) = try run([0xE5910000]) { $0.registers[1] = 256 }

@@ -7,6 +7,12 @@ protocol ARMMemory {
     func read32(_ address: UInt32) throws -> UInt32
     func write8(_ address: UInt32, _ value: UInt8) throws
     func write32(_ address: UInt32, _ value: UInt32) throws
+    // Direct host pages when the memory can publish them; nil keeps every access on the methods above.
+    var pageTable: ARMPageTable? { get }
+}
+
+extension ARMMemory {
+    var pageTable: ARMPageTable? { nil }
 }
 
 enum ARMStop: Equatable {
@@ -18,14 +24,16 @@ enum ARMStop: Equatable {
 }
 
 final class ARM11CPU {
-    var registers = [UInt32](repeating: 0, count: 16)
+    let registers = RegisterFile(count: 16)
     var cpsr: UInt32 = 0x10 // User mode, A32, little endian.
-    private(set) var instructionCount: UInt64 = 0
+    var instructionCount: UInt64 = 0
     var exclusiveAddress: UInt32?
     var threadLocalStorageAddress: UInt32 = 0 // CP15 c13 user read-only thread register.
     var fpscr: UInt32 = 0
     var fpexc: UInt32 = 0
-    var vfpSingles = [UInt32](repeating: 0, count: 32) // Dn aliases S(2n) and S(2n+1).
+    let vfpSingles = RegisterFile(count: 32) // Dn aliases S(2n) and S(2n+1).
+    var pageTable: ARMPageTable? // set by run(memory:limit:) for the memory being executed
+    deinit { registers.release(); vfpSingles.release() }
 
     var pc: UInt32 {
         get { registers[15] }
@@ -36,22 +44,41 @@ final class ARM11CPU {
     var c: Bool { cpsr & 0x2000_0000 != 0 }
     var v: Bool { cpsr & 0x1000_0000 != 0 }
 
-    func step(memory: ARMMemory) -> ARMStop {
-        let address = pc
-        if cpsr & 0x20 != 0 { return .unsupportedThumb(address) }
-        let instruction: UInt32
-        do { instruction = try memory.read32(address) }
-        catch { return .memoryFault(address, String(describing: error)) }
-        instructionCount &+= 1
+    func step(memory: ARMMemory) -> ARMStop { run(memory: memory, limit: 1).stop }
+
+    // Everything after fetch, decode-on-the-fly: the path for encodings without a pre-decoded form.
+    func execute(_ instruction: UInt32, at address: UInt32, memory: ARMMemory) -> ARMStop {
         if instruction == 0xF57F_F01F { // CLREX is unconditional in ARM state.
             clearExclusiveMonitor()
             pc = address &+ 4
             return .running
         }
         let condition = instruction >> 28
+        if instruction & 0xFD70_F000 == 0xF550_F000 { // PLD is only a cache hint.
+            pc = address &+ 4
+            return .running
+        }
         if condition == 15 { return .undefined(address, instruction) }
         if !conditionPassed(condition) { pc = address &+ 4; return .running }
+        // Fast paths for the common classes; encodings that share these bits with special instructions fall through.
+        switch (instruction >> 25) & 7 {
+        case 0 where instruction & 0x90 != 0x90 && instruction & 0x0190_0000 != 0x0100_0000, 1 where instruction & 0x0190_0000 != 0x0100_0000:
+            return dataProcessing(instruction, at: address)
+        case 2:
+            do { return try transfer(instruction, at: address, memory: memory) }
+            catch { return .memoryFault(address, String(describing: error)) }
+        case 5:
+            let signed = Int32(bitPattern: (instruction & 0x00FF_FFFF) << 8) >> 6
+            if instruction & 0x0100_0000 != 0 { registers[14] = address &+ 4 }
+            pc = address &+ 8 &+ UInt32(bitPattern: signed)
+            return .running
+        default: break
+        }
         if instruction & 0x0FFF_FFFF == 0x0320_F000 { // ARMv6K NOP hint.
+            pc = address &+ 4
+            return .running
+        }
+        if instruction & 0x0F1F_0F10 == 0x0E07_0F10 { // MCR p15, c7: cache maintenance and barriers
             pc = address &+ 4
             return .running
         }
@@ -65,12 +92,22 @@ final class ARM11CPU {
         if instruction & 0x0FE0_0FFF == 0x0EE0_0A10 {
             return vfpSystemTransfer(instruction, at: address)
         }
+        if instruction & 0x0F00_0E00 == 0x0E00_0A00 {
+            if instruction & 0x10 == 0 { return vfpDataProcessing(instruction, at: address) }
+            if instruction & 0x0FE0_0F7F == 0x0E00_0A10 { return vfpRegisterTransfer(instruction, at: address) }
+        }
+        if instruction & 0x0FE0_0E00 == 0x0C40_0A00 { return vfpPairTransfer(instruction, at: address) }
+        if instruction & 0x0E00_0E00 == 0x0C00_0A00 && instruction & 0x0120_0000 != 0x0100_0000 {
+            do { return try vfpBlockTransfer(instruction, at: address, memory: memory) }
+            catch { return .memoryFault(address, String(describing: error)) }
+        }
         if instruction & 0x0F20_0E00 == 0x0D00_0A00 {
             do { return try vfpMemoryTransfer(instruction, at: address, memory: memory) }
             catch { return .memoryFault(address, String(describing: error)) }
         }
-        if instruction & 0x0FFF_FFF0 == 0x012F_FF10 { // BX
+        if instruction & 0x0FFF_FFD0 == 0x012F_FF10 { // BX, BLX (register)
             let target = operandRegister(Int(instruction & 15), at: address)
+            if instruction & 0x20 != 0 { registers[14] = address &+ 4 }
             cpsr = (cpsr & ~0x20) | ((target & 1) << 5)
             pc = target & (target & 1 == 0 ? ~UInt32(3) : ~UInt32(1))
             return .running
@@ -86,8 +123,7 @@ final class ARM11CPU {
             pc = address &+ 8 &+ UInt32(bitPattern: signed)
             return .running
         }
-        if instruction & 0x0FF0_0FFF == 0x0190_0F9F ||
-            instruction & 0x0FF0_0FF0 == 0x0180_0F90 {
+        if instruction & 0x0F80_0FF0 == 0x0180_0F90 && (instruction & 0x0010_0000 == 0 || instruction & 0xF == 0xF) {
             do { return try exclusiveTransfer(instruction, at: address, memory: memory) }
             catch { return .memoryFault(address, String(describing: error)) }
         }
@@ -95,14 +131,13 @@ final class ARM11CPU {
             do { return try blockTransfer(instruction, at: address, memory: memory) }
             catch { return .memoryFault(address, String(describing: error)) }
         }
-        if instruction & 0x0FFF_03F0 == 0x06FF_0070 { // UXTH, ARMv6 rotate-and-extend.
-            let rd = Int((instruction >> 12) & 15), rm = Int(instruction & 15)
-            if rd == 15 || rm == 15 { return .undefined(address, instruction) }
-            let rotation = Int((instruction >> 10) & 3) * 8
-            registers[rd] = shift(registers[rm], kind: 3, amount: rotation, immediate: false).0 & 0xFFFF
-            pc = address &+ 4
-            return .running
+        if instruction & 0x0F00_00F0 == 0x0000_0090 { return multiply(instruction, at: address) }
+        if instruction & 0x0F90_0090 == 0x0100_0080 { return halfwordMultiply(instruction, at: address) }
+        if instruction & 0x0FFF_0FF0 == 0x016F_0F10 || instruction & 0x0FBF_0F70 == 0x06BF_0F30 {
+            return countOrReverse(instruction, at: address)
         }
+        if instruction & 0x0F80_03F0 == 0x0680_0070 { return extend(instruction, at: address) }
+        if instruction & 0x0FA0_0030 == 0x06A0_0010 { return saturate(instruction, at: address) }
         if instruction & 0x0C00_0000 == 0x0400_0000 {
             do { return try transfer(instruction, at: address, memory: memory) }
             catch { return .memoryFault(address, String(describing: error)) }

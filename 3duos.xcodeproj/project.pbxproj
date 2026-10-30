@@ -7,71 +7,175 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0BD7148F0445E60654AAB2E3 /* ProgramMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E60627927CD129B75C490ED /* ProgramMemory.swift */; };
+		07B01372611F6DA8DFD284CB /* PICAOutputMerger.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDA8E214BF42261B556608F9 /* PICAOutputMerger.swift */; };
+		08B075AECE777669829A7A3E /* MetalFXScreenPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 891A12DDAE6888A37E94024D /* MetalFXScreenPipeline.swift */; };
 		0FF2F555BD3EF27C7F584FAA /* FramebufferDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C141618133AC491C4552C45D /* FramebufferDecoder.swift */; };
+		106CA0888942281B49355355 /* PICAMetalShaders.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65693497CE0B5C8B033A5C1B /* PICAMetalShaders.swift */; };
 		10F21C42BB0FCD1CDB6FDF5B /* DuosAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6819037113F5373366C63A9 /* DuosAppDelegate.swift */; };
+		12557519283BE8FF909167A5 /* PICALighting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5238B56B44401438FD4DF279 /* PICALighting.swift */; };
+		14793A759414E204F41EA4C5 /* KernelObjects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FCCD3B9D8F50BF58C6D2DFF /* KernelObjects.swift */; };
 		14F39575E336000D61E7EE44 /* LibraryScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FEF5F37B3A0CF7467F7617F /* LibraryScreens.swift */; };
+		1614FED7BB5C6C5AF47D80AE /* GPUTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A6655AE065DE84B707EF6D /* GPUTransfer.swift */; };
+		218B2FC74E02C27B5D92A4B1 /* ARMPageTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12166CF2285B9CC2258C379E /* ARMPageTable.swift */; };
+		225EC6DE78D7017DA2940490 /* Y2RService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D23C8FE26DC67CA2DFD0EBF8 /* Y2RService.swift */; };
+		22DF6B74F0F753E448BE6153 /* APTService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A0C70F1848841FE4356D945 /* APTService.swift */; };
 		243C62C11067BA9BBA20507A /* ARM11VFPMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93507E03AB1FE4BB6EFF72F9 /* ARM11VFPMemory.swift */; };
 		2479DEDBDEC48B6F36BF1DA1 /* ARM11VFPSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A9CAE5C00E1181DE8405B49 /* ARM11VFPSystem.swift */; };
 		26885BC4B30CC1B81CC354B6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 32A8D2DEC9D708F5F1C4795F /* Assets.xcassets */; };
 		2AA033153FFCDA9F2C9112F9 /* CartridgeProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE9C52C54929C594510A1A0C /* CartridgeProgram.swift */; };
+		2AAF2A2F394E61F5E08F64F1 /* DSPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EF2565B3BA95CB8B2EF2F1B /* DSPService.swift */; };
 		2AF6B8F0897C2A175C3369DF /* ARM11MiscellaneousTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9FDFDFF68D343E1DD11F2B /* ARM11MiscellaneousTransfer.swift */; };
+		2B1D71BBBD4F62E8E7A8163F /* ServiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F285AFEAAE9D3B92159DE98 /* ServiceManager.swift */; };
+		2B386B3434BC8B987E44C086 /* PICAMetalState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C414BFD06F02E0582E7438F /* PICAMetalState.swift */; };
+		2CE9AD80B9BAE04E33D5695D /* PICAMetalKernels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA120DFFF787EBCC9A57DCCD /* PICAMetalKernels.swift */; };
+		327DBE18B8F35CEE8B73BFE6 /* SaveArchives.swift in Sources */ = {isa = PBXBuildFile; fileRef = 142E664BFB5328C7B69A1AA9 /* SaveArchives.swift */; };
 		34FCEEE2F5E44DB47C36DE41 /* ConsoleControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94B09397B0B01C297991211 /* ConsoleControls.swift */; };
-		38F81462FB1C4F6E7168EDF0 /* MetalFXSpatial.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5875D9D282493649C2DBEAEA /* MetalFXSpatial.swift */; };
+		388E3DDA02860EF5F4CCE64D /* ProcessLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90C733DC165C9874140FC7DD /* ProcessLoader.swift */; };
+		3EE626A59D0F275E9E512F80 /* PICAMetalVertex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A85252C3A85E3C62610269F /* PICAMetalVertex.swift */; };
+		3F3711427F273B13BD921B19 /* PICAMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C7EA2DA859E086AE6DD05B /* PICAMotion.swift */; };
 		430463367C88A5EE9B388145 /* CartridgeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 551870F16312E0E5730C5BD1 /* CartridgeReader.swift */; };
 		4F809223E6351F23A8AE3606 /* ARM11Exclusive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79EC612E2DF9445E2B59DF3B /* ARM11Exclusive.swift */; };
+		5172DC8C77B83B21A5D6BF20 /* Kernel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A2951555310CA6960AFF07 /* Kernel.swift */; };
+		5517088E836F5ACC3448AF11 /* PagedMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FFA444A3725E8A96F2A5075 /* PagedMemory.swift */; };
+		55D525E297E5D01457122F21 /* PICAPixel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E35E5791E3FE98A25D0A42A /* PICAPixel.swift */; };
+		56E0785538BDF1C3621A7C8D /* PICAShaderUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBBD317D939B16A8BFA1070 /* PICAShaderUnit.swift */; };
 		579E0F7E9EA5B57F918F038B /* TestFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A34B1AE207B7D17704AA38 /* TestFrame.swift */; };
+		5FEE835A866A5D94278447CB /* RegisterFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3A38DB132461ADF670C304 /* RegisterFile.swift */; };
+		62B8FF17F86DCCB08130B482 /* FSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1262A74924A46B33EFB78690 /* FSService.swift */; };
 		6481D20DD9FE9123B914530A /* ARM11Transfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E54370F0E659D41C1790EF /* ARM11Transfer.swift */; };
-		66B97E636071533F8453E9C1 /* BootProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 463EB9EDDEA76F4DD6235F81 /* BootProbe.swift */; };
+		65C6B19068473A93840BEEE1 /* GSPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3503B0CAF33B90C839753B8C /* GSPService.swift */; };
+		66DA6F9D5BD45FE3A14F7660 /* PICARegisters.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC626CD6C1EF87D1E0562FF /* PICARegisters.swift */; };
 		677988445A52908CFA58133B /* ConsoleShellView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D89040322F81DD1378EC1F2 /* ConsoleShellView.swift */; };
 		6A6343AE7958092C45BF4D92 /* ARM11DataProcessing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B0DE7386C67E49755843178 /* ARM11DataProcessing.swift */; };
-		72277E6100D286864231841D /* KernelHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61BBC28DC8D22D8D499A37FE /* KernelHandles.swift */; };
+		6AAF9571BE2EC4E21200C758 /* StubService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF47542FA6F0D9238EA1049 /* StubService.swift */; };
+		77A3B28A119214132D34A213 /* PICATextureDecode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602DE6D3606D83836D67B43F /* PICATextureDecode.swift */; };
+		7A981947AD9C4A1320540ACF /* PICARasterizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52FDC6B0FC36F2C39B369E2 /* PICARasterizer.swift */; };
+		7C1EB50F26463A9A24AC35EC /* CFGService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622CF3A1112EEC4CE413DCE0 /* CFGService.swift */; };
+		7F6DC1E784B9DFB352CCCD6C /* PICAMetalFrames.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */; };
+		8201056E949D59F237039BDC /* ARM11Multiply.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B230414BF222EF4225779F2 /* ARM11Multiply.swift */; };
+		83E18202093563F5A962C4ED /* ARM11Saturate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110FAC969070A316C290C63B /* ARM11Saturate.swift */; };
+		8884B091FDC0BEAE94DA9611 /* PICAMetalBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */; };
+		88A426D6BB7E6F2A68657990 /* ARM11Decode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 879D8A0C43CE3CD73982B6F2 /* ARM11Decode.swift */; };
 		8F686A5148640ED17D7740BA /* PICACommandDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD0EF4EC6867D9783E3BE3F /* PICACommandDecoder.swift */; };
 		9392F22E63F434D91F31E7EE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */; };
+		93F54D85D85B3A9905BA7335 /* ARM11VFPData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05B75B143C145A3A680BCA74 /* ARM11VFPData.swift */; };
 		94E83422B0563791268EF18C /* GameLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BFBD2C1EF139522010F4EA3 /* GameLibrary.swift */; };
-		9A504166A20F7083D82E5FB4 /* SVCDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 70F1DD671AC829E4F9F8F42A /* SVCDispatcher.swift */; };
+		96DDDD322CF37A83A9696AE8 /* PICATextureCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89E95209FF6ECAD4319E780B /* PICATextureCache.swift */; };
 		9ADF427DB83DB7080826B59A /* MetalScreenPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = D549FD79937FD29DD14F7610 /* MetalScreenPresenter.swift */; };
-		B4B13D97119C82C222E40430 /* PICASyntheticMetal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C2D836C44B8D656C03CC8D1 /* PICASyntheticMetal.swift */; };
+		9EEA4B1A87C918AB28C73B98 /* AudioSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5473CDCE5A1AE52588E4355 /* AudioSource.swift */; };
+		A03FDACBF21071C4813BDB3E /* SVCMemory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95D97E31E810510FEF791A01 /* SVCMemory.swift */; };
+		A16696A3360CA1F95FE8310B /* HIDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EEB3C86BFC3021352DE824 /* HIDService.swift */; };
+		A1787364EBC1C63487C5BFEE /* ARM11Run.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDEAAB61138001B5E6ABE4E /* ARM11Run.swift */; };
+		A2B218B9170EEFF0C6EA4DC0 /* PICAVertexInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BD9C37BC36267F935E1C1DC /* PICAVertexInput.swift */; };
+		A405120C0D54AFB86A570F8D /* PICASurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19607B03EF27C4F56AEB7A46 /* PICASurface.swift */; };
+		A8623946C4C95404ABA5B22B /* PICARenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F60DE2EF7A74BB20EA748B /* PICARenderer.swift */; };
+		A95EF920B13ABF7DB5CB9694 /* PICADrawState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E75DE40C89A7A2BB115227 /* PICADrawState.swift */; };
+		AFA9400E57F004FCAE1B4D91 /* SVCSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00EC4D30CB932B94957F5A00 /* SVCSystem.swift */; };
+		B0B6F916C66D1B28EEE9C136 /* PICAFragment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4088259D1963EBAA599DB6F1 /* PICAFragment.swift */; };
+		B9F58C639AF40AB6B081A833 /* AudioMixer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B610C1DC8389A53DB89A08B1 /* AudioMixer.swift */; };
+		BA4CE8BB0D9626B3B7E8ED06 /* PICAMetalLighting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0989786F5A0440A1F5B5C652 /* PICAMetalLighting.swift */; };
+		BB1F4DE3C1E2FAA604A8727E /* FatalErrorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39771B522D6DA1485D1278D3 /* FatalErrorService.swift */; };
+		BD0FB94DB493A7CB7FF01E1A /* SVCThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF498BB5B37A9842F6A6A48E /* SVCThread.swift */; };
 		BDEC5FB45BDFF26E0B2E4CF7 /* ConsoleInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E725B804BE0E8D01C842814 /* ConsoleInput.swift */; };
+		C1E76EF4377D5E0925F84DA3 /* PICAVertexProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11376DD3F386A4398CEC71D /* PICAVertexProcessor.swift */; };
 		C4F26A64E6FCECAA46E884D2 /* RootController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC0C6DBC460805E7B04D658 /* RootController.swift */; };
+		C81D631C82F0C266944C8603 /* IPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5649309A2B6B3872892D57D /* IPC.swift */; };
+		CC8D5C3A311C864B809210E9 /* PICAClipper.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD29E7F1C3EAAAFA1695F0E /* PICAClipper.swift */; };
+		CF972669B001A2D974747283 /* Y2RConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1F5947F78132C176E4FC0BD /* Y2RConversion.swift */; };
 		DB3A2354B4C5CB7CADA4CEE2 /* ARM11CPU.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB3AC90BE811C782096E7B7 /* ARM11CPU.swift */; };
-		E63BF0C67215F9F2C57D8421 /* PICASyntheticDraw.swift in Sources */ = {isa = PBXBuildFile; fileRef = E39699659C14F895DD6A7FF4 /* PICASyntheticDraw.swift */; };
+		DC96DC67677729CB8B714BEF /* PICAShaderProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */; };
+		DE050734B2F8A65114FDF9F3 /* SVCDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38CA4BC0255E378D57F2F28 /* SVCDispatch.swift */; };
+		EC9087F0C0574AB2A860D04B /* GameRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05FB9A43840E7571FB391985 /* GameRunner.swift */; };
+		EDFA5726932EE8B7F6629FCF /* PICAMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E86D02FCDCC5F4BA8463BE /* PICAMath.swift */; };
+		EE180E2F188DFF62DF8EE901 /* GPUState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D6F5D58D2378BA549D78C8A /* GPUState.swift */; };
 		F9DFC0F7744C792764A1FFA2 /* ARM11BlockTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B86F08183C6D5861D983FA13 /* ARM11BlockTransfer.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		00EC4D30CB932B94957F5A00 /* SVCSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVCSystem.swift; sourceTree = "<group>"; };
+		03EEB3C86BFC3021352DE824 /* HIDService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDService.swift; sourceTree = "<group>"; };
+		05B75B143C145A3A680BCA74 /* ARM11VFPData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11VFPData.swift; sourceTree = "<group>"; };
+		05FB9A43840E7571FB391985 /* GameRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameRunner.swift; sourceTree = "<group>"; };
+		0989786F5A0440A1F5B5C652 /* PICAMetalLighting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalLighting.swift; sourceTree = "<group>"; };
+		0A85252C3A85E3C62610269F /* PICAMetalVertex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalVertex.swift; sourceTree = "<group>"; };
+		0D6F5D58D2378BA549D78C8A /* GPUState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUState.swift; sourceTree = "<group>"; };
+		110FAC969070A316C290C63B /* ARM11Saturate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Saturate.swift; sourceTree = "<group>"; };
+		12166CF2285B9CC2258C379E /* ARMPageTable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARMPageTable.swift; sourceTree = "<group>"; };
+		1262A74924A46B33EFB78690 /* FSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FSService.swift; sourceTree = "<group>"; };
+		142E664BFB5328C7B69A1AA9 /* SaveArchives.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveArchives.swift; sourceTree = "<group>"; };
 		15A34B1AE207B7D17704AA38 /* TestFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestFrame.swift; sourceTree = "<group>"; };
+		19607B03EF27C4F56AEB7A46 /* PICASurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICASurface.swift; sourceTree = "<group>"; };
 		1CC0C6DBC460805E7B04D658 /* RootController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootController.swift; sourceTree = "<group>"; };
 		1DD0EF4EC6867D9783E3BE3F /* PICACommandDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICACommandDecoder.swift; sourceTree = "<group>"; };
-		2E60627927CD129B75C490ED /* ProgramMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgramMemory.swift; sourceTree = "<group>"; };
+		1EF2565B3BA95CB8B2EF2F1B /* DSPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSPService.swift; sourceTree = "<group>"; };
+		21C7EA2DA859E086AE6DD05B /* PICAMotion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMotion.swift; sourceTree = "<group>"; };
+		24E86D02FCDCC5F4BA8463BE /* PICAMath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMath.swift; sourceTree = "<group>"; };
+		2C414BFD06F02E0582E7438F /* PICAMetalState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalState.swift; sourceTree = "<group>"; };
+		2EBBD317D939B16A8BFA1070 /* PICAShaderUnit.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAShaderUnit.swift; sourceTree = "<group>"; };
+		2F285AFEAAE9D3B92159DE98 /* ServiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServiceManager.swift; sourceTree = "<group>"; };
+		2FFA444A3725E8A96F2A5075 /* PagedMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PagedMemory.swift; sourceTree = "<group>"; };
 		32A8D2DEC9D708F5F1C4795F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		3C2D836C44B8D656C03CC8D1 /* PICASyntheticMetal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICASyntheticMetal.swift; sourceTree = "<group>"; };
-		463EB9EDDEA76F4DD6235F81 /* BootProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BootProbe.swift; sourceTree = "<group>"; };
+		3503B0CAF33B90C839753B8C /* GSPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GSPService.swift; sourceTree = "<group>"; };
+		35A2951555310CA6960AFF07 /* Kernel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Kernel.swift; sourceTree = "<group>"; };
+		39771B522D6DA1485D1278D3 /* FatalErrorService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FatalErrorService.swift; sourceTree = "<group>"; };
+		3B230414BF222EF4225779F2 /* ARM11Multiply.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Multiply.swift; sourceTree = "<group>"; };
+		3BD9C37BC36267F935E1C1DC /* PICAVertexInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAVertexInput.swift; sourceTree = "<group>"; };
+		4088259D1963EBAA599DB6F1 /* PICAFragment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAFragment.swift; sourceTree = "<group>"; };
+		44A6655AE065DE84B707EF6D /* GPUTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUTransfer.swift; sourceTree = "<group>"; };
+		4AC626CD6C1EF87D1E0562FF /* PICARegisters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARegisters.swift; sourceTree = "<group>"; };
+		5238B56B44401438FD4DF279 /* PICALighting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICALighting.swift; sourceTree = "<group>"; };
 		551870F16312E0E5730C5BD1 /* CartridgeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartridgeReader.swift; sourceTree = "<group>"; };
-		5875D9D282493649C2DBEAEA /* MetalFXSpatial.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalFXSpatial.swift; sourceTree = "<group>"; };
 		5EB3AC90BE811C782096E7B7 /* ARM11CPU.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11CPU.swift; sourceTree = "<group>"; };
-		61BBC28DC8D22D8D499A37FE /* KernelHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelHandles.swift; sourceTree = "<group>"; };
+		602DE6D3606D83836D67B43F /* PICATextureDecode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICATextureDecode.swift; sourceTree = "<group>"; };
+		622CF3A1112EEC4CE413DCE0 /* CFGService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CFGService.swift; sourceTree = "<group>"; };
+		65693497CE0B5C8B033A5C1B /* PICAMetalShaders.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalShaders.swift; sourceTree = "<group>"; };
+		6A0C70F1848841FE4356D945 /* APTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APTService.swift; sourceTree = "<group>"; };
 		6A9CAE5C00E1181DE8405B49 /* ARM11VFPSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11VFPSystem.swift; sourceTree = "<group>"; };
-		70F1DD671AC829E4F9F8F42A /* SVCDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVCDispatcher.swift; sourceTree = "<group>"; };
+		6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalBackend.swift; sourceTree = "<group>"; };
 		79EC612E2DF9445E2B59DF3B /* ARM11Exclusive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Exclusive.swift; sourceTree = "<group>"; };
 		7B0DE7386C67E49755843178 /* ARM11DataProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11DataProcessing.swift; sourceTree = "<group>"; };
 		7E725B804BE0E8D01C842814 /* ConsoleInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleInput.swift; sourceTree = "<group>"; };
+		8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalFrames.swift; sourceTree = "<group>"; };
+		879D8A0C43CE3CD73982B6F2 /* ARM11Decode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Decode.swift; sourceTree = "<group>"; };
+		891A12DDAE6888A37E94024D /* MetalFXScreenPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalFXScreenPipeline.swift; sourceTree = "<group>"; };
+		89E95209FF6ECAD4319E780B /* PICATextureCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICATextureCache.swift; sourceTree = "<group>"; };
 		8BFBD2C1EF139522010F4EA3 /* GameLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameLibrary.swift; sourceTree = "<group>"; };
+		8E35E5791E3FE98A25D0A42A /* PICAPixel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAPixel.swift; sourceTree = "<group>"; };
+		8FCCD3B9D8F50BF58C6D2DFF /* KernelObjects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KernelObjects.swift; sourceTree = "<group>"; };
+		90C733DC165C9874140FC7DD /* ProcessLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessLoader.swift; sourceTree = "<group>"; };
 		93507E03AB1FE4BB6EFF72F9 /* ARM11VFPMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11VFPMemory.swift; sourceTree = "<group>"; };
+		95D97E31E810510FEF791A01 /* SVCMemory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVCMemory.swift; sourceTree = "<group>"; };
 		9D89040322F81DD1378EC1F2 /* ConsoleShellView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleShellView.swift; sourceTree = "<group>"; };
+		9EDEAAB61138001B5E6ABE4E /* ARM11Run.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Run.swift; sourceTree = "<group>"; };
 		9FEF5F37B3A0CF7467F7617F /* LibraryScreens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScreens.swift; sourceTree = "<group>"; };
+		A1F5947F78132C176E4FC0BD /* Y2RConversion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Y2RConversion.swift; sourceTree = "<group>"; };
+		A5473CDCE5A1AE52588E4355 /* AudioSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioSource.swift; sourceTree = "<group>"; };
+		A5649309A2B6B3872892D57D /* IPC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IPC.swift; sourceTree = "<group>"; };
 		A6819037113F5373366C63A9 /* DuosAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DuosAppDelegate.swift; sourceTree = "<group>"; };
 		A94B09397B0B01C297991211 /* ConsoleControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleControls.swift; sourceTree = "<group>"; };
+		AEF47542FA6F0D9238EA1049 /* StubService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StubService.swift; sourceTree = "<group>"; };
 		B2057DFE46BFB22CB0E79A1B /* 3duos.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = 3duos.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B610C1DC8389A53DB89A08B1 /* AudioMixer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioMixer.swift; sourceTree = "<group>"; };
 		B86F08183C6D5861D983FA13 /* ARM11BlockTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11BlockTransfer.swift; sourceTree = "<group>"; };
+		C0E75DE40C89A7A2BB115227 /* PICADrawState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICADrawState.swift; sourceTree = "<group>"; };
 		C141618133AC491C4552C45D /* FramebufferDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FramebufferDecoder.swift; sourceTree = "<group>"; };
+		C4F60DE2EF7A74BB20EA748B /* PICARenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARenderer.swift; sourceTree = "<group>"; };
+		CA120DFFF787EBCC9A57DCCD /* PICAMetalKernels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalKernels.swift; sourceTree = "<group>"; };
+		CCD29E7F1C3EAAAFA1695F0E /* PICAClipper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAClipper.swift; sourceTree = "<group>"; };
 		CE9C52C54929C594510A1A0C /* CartridgeProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartridgeProgram.swift; sourceTree = "<group>"; };
+		CF3A38DB132461ADF670C304 /* RegisterFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterFile.swift; sourceTree = "<group>"; };
 		D0E54370F0E659D41C1790EF /* ARM11Transfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Transfer.swift; sourceTree = "<group>"; };
+		D11376DD3F386A4398CEC71D /* PICAVertexProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAVertexProcessor.swift; sourceTree = "<group>"; };
+		D23C8FE26DC67CA2DFD0EBF8 /* Y2RService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Y2RService.swift; sourceTree = "<group>"; };
+		D38CA4BC0255E378D57F2F28 /* SVCDispatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVCDispatch.swift; sourceTree = "<group>"; };
 		D549FD79937FD29DD14F7610 /* MetalScreenPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalScreenPresenter.swift; sourceTree = "<group>"; };
 		D96C3F7BE8819651E3526797 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		DD9FDFDFF68D343E1DD11F2B /* ARM11MiscellaneousTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11MiscellaneousTransfer.swift; sourceTree = "<group>"; };
-		E39699659C14F895DD6A7FF4 /* PICASyntheticDraw.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICASyntheticDraw.swift; sourceTree = "<group>"; };
+		DDA8E214BF42261B556608F9 /* PICAOutputMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAOutputMerger.swift; sourceTree = "<group>"; };
+		E52FDC6B0FC36F2C39B369E2 /* PICARasterizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARasterizer.swift; sourceTree = "<group>"; };
+		F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAShaderProgram.swift; sourceTree = "<group>"; };
 		F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		FF498BB5B37A9842F6A6A48E /* SVCThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVCThread.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -96,9 +200,34 @@
 		15F5F5F7A7A6BFC251E44B17 /* GPU */ = {
 			isa = PBXGroup;
 			children = (
+				0D6F5D58D2378BA549D78C8A /* GPUState.swift */,
+				44A6655AE065DE84B707EF6D /* GPUTransfer.swift */,
+				CCD29E7F1C3EAAAFA1695F0E /* PICAClipper.swift */,
 				1DD0EF4EC6867D9783E3BE3F /* PICACommandDecoder.swift */,
-				E39699659C14F895DD6A7FF4 /* PICASyntheticDraw.swift */,
-				3C2D836C44B8D656C03CC8D1 /* PICASyntheticMetal.swift */,
+				C0E75DE40C89A7A2BB115227 /* PICADrawState.swift */,
+				4088259D1963EBAA599DB6F1 /* PICAFragment.swift */,
+				5238B56B44401438FD4DF279 /* PICALighting.swift */,
+				24E86D02FCDCC5F4BA8463BE /* PICAMath.swift */,
+				6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */,
+				8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */,
+				CA120DFFF787EBCC9A57DCCD /* PICAMetalKernels.swift */,
+				0989786F5A0440A1F5B5C652 /* PICAMetalLighting.swift */,
+				65693497CE0B5C8B033A5C1B /* PICAMetalShaders.swift */,
+				2C414BFD06F02E0582E7438F /* PICAMetalState.swift */,
+				0A85252C3A85E3C62610269F /* PICAMetalVertex.swift */,
+				21C7EA2DA859E086AE6DD05B /* PICAMotion.swift */,
+				DDA8E214BF42261B556608F9 /* PICAOutputMerger.swift */,
+				8E35E5791E3FE98A25D0A42A /* PICAPixel.swift */,
+				E52FDC6B0FC36F2C39B369E2 /* PICARasterizer.swift */,
+				4AC626CD6C1EF87D1E0562FF /* PICARegisters.swift */,
+				C4F60DE2EF7A74BB20EA748B /* PICARenderer.swift */,
+				F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */,
+				2EBBD317D939B16A8BFA1070 /* PICAShaderUnit.swift */,
+				19607B03EF27C4F56AEB7A46 /* PICASurface.swift */,
+				89E95209FF6ECAD4319E780B /* PICATextureCache.swift */,
+				602DE6D3606D83836D67B43F /* PICATextureDecode.swift */,
+				3BD9C37BC36267F935E1C1DC /* PICAVertexInput.swift */,
+				D11376DD3F386A4398CEC71D /* PICAVertexProcessor.swift */,
 			);
 			path = GPU;
 			sourceTree = "<group>";
@@ -106,6 +235,7 @@
 		1882305BC5114B2C3A764990 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				EF59A66D20918B297C8A58B7 /* Audio */,
 				CC5B3DEE29D7D0F8C59346FF /* Boot */,
 				403D6473265DBBEE486C5D91 /* Cartridge */,
 				6F4EB01D40FA247B31CB870B /* CPU */,
@@ -113,6 +243,8 @@
 				35B4581D8B040F59B7A5969F /* Graphics */,
 				CAE0D8EA208225F3F41B84DC /* Input */,
 				C8D100CDF98F5F2DF274B6E0 /* Kernel */,
+				FB88CA32E00ABD71B839104D /* Memory */,
+				475161270CA163FF8995D509 /* Services */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -121,7 +253,7 @@
 			isa = PBXGroup;
 			children = (
 				C141618133AC491C4552C45D /* FramebufferDecoder.swift */,
-				5875D9D282493649C2DBEAEA /* MetalFXSpatial.swift */,
+				891A12DDAE6888A37E94024D /* MetalFXScreenPipeline.swift */,
 				D549FD79937FD29DD14F7610 /* MetalScreenPresenter.swift */,
 			);
 			path = Graphics;
@@ -136,12 +268,33 @@
 			path = Cartridge;
 			sourceTree = "<group>";
 		};
+		475161270CA163FF8995D509 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				6A0C70F1848841FE4356D945 /* APTService.swift */,
+				622CF3A1112EEC4CE413DCE0 /* CFGService.swift */,
+				1EF2565B3BA95CB8B2EF2F1B /* DSPService.swift */,
+				39771B522D6DA1485D1278D3 /* FatalErrorService.swift */,
+				1262A74924A46B33EFB78690 /* FSService.swift */,
+				3503B0CAF33B90C839753B8C /* GSPService.swift */,
+				03EEB3C86BFC3021352DE824 /* HIDService.swift */,
+				A5649309A2B6B3872892D57D /* IPC.swift */,
+				142E664BFB5328C7B69A1AA9 /* SaveArchives.swift */,
+				2F285AFEAAE9D3B92159DE98 /* ServiceManager.swift */,
+				AEF47542FA6F0D9238EA1049 /* StubService.swift */,
+				A1F5947F78132C176E4FC0BD /* Y2RConversion.swift */,
+				D23C8FE26DC67CA2DFD0EBF8 /* Y2RService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
 		56A85EE4A1623F37A1A82326 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				32A8D2DEC9D708F5F1C4795F /* Assets.xcassets */,
 				A6819037113F5373366C63A9 /* DuosAppDelegate.swift */,
 				8BFBD2C1EF139522010F4EA3 /* GameLibrary.swift */,
+				05FB9A43840E7571FB391985 /* GameRunner.swift */,
 				D96C3F7BE8819651E3526797 /* Info.plist */,
 				F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */,
 				1CC0C6DBC460805E7B04D658 /* RootController.swift */,
@@ -156,11 +309,18 @@
 				B86F08183C6D5861D983FA13 /* ARM11BlockTransfer.swift */,
 				5EB3AC90BE811C782096E7B7 /* ARM11CPU.swift */,
 				7B0DE7386C67E49755843178 /* ARM11DataProcessing.swift */,
+				879D8A0C43CE3CD73982B6F2 /* ARM11Decode.swift */,
 				79EC612E2DF9445E2B59DF3B /* ARM11Exclusive.swift */,
 				DD9FDFDFF68D343E1DD11F2B /* ARM11MiscellaneousTransfer.swift */,
+				3B230414BF222EF4225779F2 /* ARM11Multiply.swift */,
+				9EDEAAB61138001B5E6ABE4E /* ARM11Run.swift */,
+				110FAC969070A316C290C63B /* ARM11Saturate.swift */,
 				D0E54370F0E659D41C1790EF /* ARM11Transfer.swift */,
+				05B75B143C145A3A680BCA74 /* ARM11VFPData.swift */,
 				93507E03AB1FE4BB6EFF72F9 /* ARM11VFPMemory.swift */,
 				6A9CAE5C00E1181DE8405B49 /* ARM11VFPSystem.swift */,
+				12166CF2285B9CC2258C379E /* ARMPageTable.swift */,
+				CF3A38DB132461ADF670C304 /* RegisterFile.swift */,
 			);
 			path = CPU;
 			sourceTree = "<group>";
@@ -168,8 +328,12 @@
 		C8D100CDF98F5F2DF274B6E0 /* Kernel */ = {
 			isa = PBXGroup;
 			children = (
-				61BBC28DC8D22D8D499A37FE /* KernelHandles.swift */,
-				70F1DD671AC829E4F9F8F42A /* SVCDispatcher.swift */,
+				35A2951555310CA6960AFF07 /* Kernel.swift */,
+				8FCCD3B9D8F50BF58C6D2DFF /* KernelObjects.swift */,
+				D38CA4BC0255E378D57F2F28 /* SVCDispatch.swift */,
+				95D97E31E810510FEF791A01 /* SVCMemory.swift */,
+				00EC4D30CB932B94957F5A00 /* SVCSystem.swift */,
+				FF498BB5B37A9842F6A6A48E /* SVCThread.swift */,
 			);
 			path = Kernel;
 			sourceTree = "<group>";
@@ -185,8 +349,7 @@
 		CC5B3DEE29D7D0F8C59346FF /* Boot */ = {
 			isa = PBXGroup;
 			children = (
-				463EB9EDDEA76F4DD6235F81 /* BootProbe.swift */,
-				2E60627927CD129B75C490ED /* ProgramMemory.swift */,
+				90C733DC165C9874140FC7DD /* ProcessLoader.swift */,
 			);
 			path = Boot;
 			sourceTree = "<group>";
@@ -199,6 +362,23 @@
 				052E61C681B24A0A678F9AE4 /* UI */,
 				134C0ABC4F22A9EF25691850 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		EF59A66D20918B297C8A58B7 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				B610C1DC8389A53DB89A08B1 /* AudioMixer.swift */,
+				A5473CDCE5A1AE52588E4355 /* AudioSource.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		FB88CA32E00ABD71B839104D /* Memory */ = {
+			isa = PBXGroup;
+			children = (
+				2FFA444A3725E8A96F2A5075 /* PagedMemory.swift */,
+			);
+			path = Memory;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -272,34 +452,86 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				22DF6B74F0F753E448BE6153 /* APTService.swift in Sources */,
 				F9DFC0F7744C792764A1FFA2 /* ARM11BlockTransfer.swift in Sources */,
 				DB3A2354B4C5CB7CADA4CEE2 /* ARM11CPU.swift in Sources */,
 				6A6343AE7958092C45BF4D92 /* ARM11DataProcessing.swift in Sources */,
+				88A426D6BB7E6F2A68657990 /* ARM11Decode.swift in Sources */,
 				4F809223E6351F23A8AE3606 /* ARM11Exclusive.swift in Sources */,
 				2AF6B8F0897C2A175C3369DF /* ARM11MiscellaneousTransfer.swift in Sources */,
+				8201056E949D59F237039BDC /* ARM11Multiply.swift in Sources */,
+				A1787364EBC1C63487C5BFEE /* ARM11Run.swift in Sources */,
+				83E18202093563F5A962C4ED /* ARM11Saturate.swift in Sources */,
 				6481D20DD9FE9123B914530A /* ARM11Transfer.swift in Sources */,
+				93F54D85D85B3A9905BA7335 /* ARM11VFPData.swift in Sources */,
 				243C62C11067BA9BBA20507A /* ARM11VFPMemory.swift in Sources */,
 				2479DEDBDEC48B6F36BF1DA1 /* ARM11VFPSystem.swift in Sources */,
-				66B97E636071533F8453E9C1 /* BootProbe.swift in Sources */,
+				218B2FC74E02C27B5D92A4B1 /* ARMPageTable.swift in Sources */,
+				B9F58C639AF40AB6B081A833 /* AudioMixer.swift in Sources */,
+				9EEA4B1A87C918AB28C73B98 /* AudioSource.swift in Sources */,
+				7C1EB50F26463A9A24AC35EC /* CFGService.swift in Sources */,
 				2AA033153FFCDA9F2C9112F9 /* CartridgeProgram.swift in Sources */,
 				430463367C88A5EE9B388145 /* CartridgeReader.swift in Sources */,
 				34FCEEE2F5E44DB47C36DE41 /* ConsoleControls.swift in Sources */,
 				BDEC5FB45BDFF26E0B2E4CF7 /* ConsoleInput.swift in Sources */,
 				677988445A52908CFA58133B /* ConsoleShellView.swift in Sources */,
+				2AAF2A2F394E61F5E08F64F1 /* DSPService.swift in Sources */,
 				10F21C42BB0FCD1CDB6FDF5B /* DuosAppDelegate.swift in Sources */,
+				62B8FF17F86DCCB08130B482 /* FSService.swift in Sources */,
+				BB1F4DE3C1E2FAA604A8727E /* FatalErrorService.swift in Sources */,
 				0FF2F555BD3EF27C7F584FAA /* FramebufferDecoder.swift in Sources */,
+				EE180E2F188DFF62DF8EE901 /* GPUState.swift in Sources */,
+				1614FED7BB5C6C5AF47D80AE /* GPUTransfer.swift in Sources */,
+				65C6B19068473A93840BEEE1 /* GSPService.swift in Sources */,
 				94E83422B0563791268EF18C /* GameLibrary.swift in Sources */,
-				72277E6100D286864231841D /* KernelHandles.swift in Sources */,
+				EC9087F0C0574AB2A860D04B /* GameRunner.swift in Sources */,
+				A16696A3360CA1F95FE8310B /* HIDService.swift in Sources */,
+				C81D631C82F0C266944C8603 /* IPC.swift in Sources */,
+				5172DC8C77B83B21A5D6BF20 /* Kernel.swift in Sources */,
+				14793A759414E204F41EA4C5 /* KernelObjects.swift in Sources */,
 				14F39575E336000D61E7EE44 /* LibraryScreens.swift in Sources */,
-				38F81462FB1C4F6E7168EDF0 /* MetalFXSpatial.swift in Sources */,
+				08B075AECE777669829A7A3E /* MetalFXScreenPipeline.swift in Sources */,
 				9ADF427DB83DB7080826B59A /* MetalScreenPresenter.swift in Sources */,
+				CC8D5C3A311C864B809210E9 /* PICAClipper.swift in Sources */,
 				8F686A5148640ED17D7740BA /* PICACommandDecoder.swift in Sources */,
-				E63BF0C67215F9F2C57D8421 /* PICASyntheticDraw.swift in Sources */,
-				B4B13D97119C82C222E40430 /* PICASyntheticMetal.swift in Sources */,
-				0BD7148F0445E60654AAB2E3 /* ProgramMemory.swift in Sources */,
+				A95EF920B13ABF7DB5CB9694 /* PICADrawState.swift in Sources */,
+				B0B6F916C66D1B28EEE9C136 /* PICAFragment.swift in Sources */,
+				12557519283BE8FF909167A5 /* PICALighting.swift in Sources */,
+				EDFA5726932EE8B7F6629FCF /* PICAMath.swift in Sources */,
+				8884B091FDC0BEAE94DA9611 /* PICAMetalBackend.swift in Sources */,
+				7F6DC1E784B9DFB352CCCD6C /* PICAMetalFrames.swift in Sources */,
+				2CE9AD80B9BAE04E33D5695D /* PICAMetalKernels.swift in Sources */,
+				BA4CE8BB0D9626B3B7E8ED06 /* PICAMetalLighting.swift in Sources */,
+				106CA0888942281B49355355 /* PICAMetalShaders.swift in Sources */,
+				2B386B3434BC8B987E44C086 /* PICAMetalState.swift in Sources */,
+				3EE626A59D0F275E9E512F80 /* PICAMetalVertex.swift in Sources */,
+				3F3711427F273B13BD921B19 /* PICAMotion.swift in Sources */,
+				07B01372611F6DA8DFD284CB /* PICAOutputMerger.swift in Sources */,
+				55D525E297E5D01457122F21 /* PICAPixel.swift in Sources */,
+				7A981947AD9C4A1320540ACF /* PICARasterizer.swift in Sources */,
+				66DA6F9D5BD45FE3A14F7660 /* PICARegisters.swift in Sources */,
+				A8623946C4C95404ABA5B22B /* PICARenderer.swift in Sources */,
+				DC96DC67677729CB8B714BEF /* PICAShaderProgram.swift in Sources */,
+				56E0785538BDF1C3621A7C8D /* PICAShaderUnit.swift in Sources */,
+				A405120C0D54AFB86A570F8D /* PICASurface.swift in Sources */,
+				96DDDD322CF37A83A9696AE8 /* PICATextureCache.swift in Sources */,
+				77A3B28A119214132D34A213 /* PICATextureDecode.swift in Sources */,
+				A2B218B9170EEFF0C6EA4DC0 /* PICAVertexInput.swift in Sources */,
+				C1E76EF4377D5E0925F84DA3 /* PICAVertexProcessor.swift in Sources */,
+				5517088E836F5ACC3448AF11 /* PagedMemory.swift in Sources */,
+				388E3DDA02860EF5F4CCE64D /* ProcessLoader.swift in Sources */,
+				5FEE835A866A5D94278447CB /* RegisterFile.swift in Sources */,
 				C4F26A64E6FCECAA46E884D2 /* RootController.swift in Sources */,
-				9A504166A20F7083D82E5FB4 /* SVCDispatcher.swift in Sources */,
+				DE050734B2F8A65114FDF9F3 /* SVCDispatch.swift in Sources */,
+				A03FDACBF21071C4813BDB3E /* SVCMemory.swift in Sources */,
+				AFA9400E57F004FCAE1B4D91 /* SVCSystem.swift in Sources */,
+				BD0FB94DB493A7CB7FF01E1A /* SVCThread.swift in Sources */,
+				327DBE18B8F35CEE8B73BFE6 /* SaveArchives.swift in Sources */,
+				2B1D71BBBD4F62E8E7A8163F /* ServiceManager.swift in Sources */,
+				6AAF9571BE2EC4E21200C758 /* StubService.swift in Sources */,
 				579E0F7E9EA5B57F918F038B /* TestFrame.swift in Sources */,
+				CF972669B001A2D974747283 /* Y2RConversion.swift in Sources */,
+				225EC6DE78D7017DA2940490 /* Y2RService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -312,6 +544,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				GCC_OPTIMIZATION_LEVEL = s;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -321,6 +554,8 @@
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = YES;
+				SWIFT_ENFORCE_EXCLUSIVE_ACCESS = unchecked;
+				SWIFT_OPTIMIZATION_LEVEL = "-Ounchecked";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -376,7 +611,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -433,7 +668,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -450,6 +685,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				GCC_OPTIMIZATION_LEVEL = s;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -459,6 +695,8 @@
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = YES;
+				SWIFT_ENFORCE_EXCLUSIVE_ACCESS = unchecked;
+				SWIFT_OPTIMIZATION_LEVEL = "-Ounchecked";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

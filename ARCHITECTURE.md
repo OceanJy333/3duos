@@ -14,7 +14,7 @@
   → 上下 LCD framebuffer → Metal → 3duos 双屏
 ```
 
-现在已实现文件解析、代码段映射、A32 指令子集、部分内核 SVC、PICA 命令列表解析、LCD BGR8 解码和原生 Metal 显示。应用中的测试帧由自造 A32 程序写入一列帧缓冲，再交给 Metal 显示；测试帧文字由 UIKit 绘制。独立测试以合成 PICA 寄存器和顶点数据驱动固定 Metal 着色器，绘制三角形并回读像素。PICA 着色器和游戏程序尚未驱动画面。
+现在已实现文件解析、代码段映射、ARM11 A32 解释器、线程调度与约 60 个 SVC、srv/APT/fs/gsp/dsp/hid/cfg 等 HLE 服务、GSP 命令队列与显示传输、PICA 命令列表解析、LCD BGR8 解码和原生 Metal 显示。应用中的测试帧由自造 A32 程序写入一列帧缓冲，再交给 Metal 显示；测试帧文字由 UIKit 绘制。独立测试以合成 PICA 寄存器和顶点数据驱动固定 Metal 着色器，绘制三角形并回读像素。《时之笛》已能在自研内核里启动并提交 GX 命令，但 PICA 命令列表尚未执行，没有游戏画面。
 
 ## 《时之笛 3D》实测入口
 
@@ -27,9 +27,9 @@
 ## 接下来按真实缺口推进
 
 1. 补 ARM11 Thumb/VFP、异常、内存语义，并由真实程序指令或自制测试验证。
-2. 从首个 SVC 开始实现句柄、线程、调度和 IPC；每次记录新的停止点，直到游戏提交首个 GSP 命令。
+2. 查清游戏全线程空转的原因（DSP 管道、HID、GSP 中断时序），再执行 GX 命令 1 的 PICA 命令列表，直到游戏画出首个非黑帧。
 3. 现有合成 PICA 命令、受限 float2 顶点和固定 Metal 着色器的三角形测试；继续实现 PICA 着色器、通用顶点格式、纹理、深度、TEV 与显存传输，再用游戏提交的命令验证。
 4. 首帧之后逐项接输入、下屏触摸、DSP 音频和存档；用真实游戏画面与操作验收。
-5. Metal 4 MetalFX Spatial 已在 Apple M4 上完成 64×64 至 128×128 合成纹理放大与 GPU 回读，待接入双屏展示器。Temporal 与 Frame Interpolation 需要连续颜色帧、深度和运动向量；神经降噪还需要适用的噪声和材质数据，只有输入齐备且实测改善画质时才接入。
+5. MetalFX 管线（`Core/Graphics/MetalFXScreenPipeline.swift`）已接入双屏展示器：Spatial、Temporal（系统在 Apple 芯片上用神经网络实现）、Denoised，以及 Temporal/Denoised 之上的 Frame Interpolation。3DS 没有深度、运动和材质缓冲，现在的输入是：运动向量由前后两帧的块匹配 compute 着色器估算，深度、法线、粗糙度为常量，抖动为 0。等 PICA 渲染器出现后，应改为用真实深度、重投影运动向量和投影抖动喂给同一接口。
 
 技术依据：[3dbrew NCCH](https://www.3dbrew.org/wiki/NCCH)、[SVC](https://www.3dbrew.org/wiki/SVC)、[PICA GPU 寄存器](https://www.3dbrew.org/wiki/GPU/Internal_Registers)、[Arm ARMv6 架构手册](https://developer.arm.com/documentation/ddi0100/latest/)、[Apple MetalFX](https://developer.apple.com/documentation/metalfx)、[Metal 4 Frame Interpolation](https://developer.apple.com/videos/play/wwdc2025/211/)。

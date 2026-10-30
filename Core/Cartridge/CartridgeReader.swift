@@ -43,6 +43,7 @@ struct Cartridge {
     let executable: CartridgeRegion?
     let icon: CartridgeIcon?
     let exefs: [String: CartridgeRegion]
+    let romfs: CartridgeRegion?
 }
 
 enum CartridgeError: Error, LocalizedError {
@@ -150,13 +151,17 @@ enum CartridgeReader {
             }
             entries[name] = region
         }
+        let romfsOffset = header.u32(0x1B0) * 0x200, romfsSize = header.u32(0x1B4) * 0x200
+        let romfs = romfsSize > 0 && romfsOffset <= contentSize && romfsSize <= contentSize - romfsOffset
+            ? CartridgeRegion(offset: partition.offset + romfsOffset, size: romfsSize) : nil
         var icon: CartridgeIcon?
         if let region = entries["icon"] {
             guard region.size >= 0x36C0 else { throw CartridgeError.invalid("SMDH is too short") }
             icon = try readIcon(file.read(offset: region.offset, size: 0x36C0))
         }
         return Cartridge(programID: header.u64(0x118), productCode: header.ascii(0x150, 16),
-            codeCompressed: compressed, codeSegments: segments, executable: entries[".code"], icon: icon, exefs: entries)
+            codeCompressed: compressed, codeSegments: segments, executable: entries[".code"], icon: icon, exefs: entries,
+            romfs: romfs)
     }
 
     private static func overlaps(_ a: CartridgeRegion, _ b: CartridgeRegion) -> Bool {

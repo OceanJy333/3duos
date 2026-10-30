@@ -24,24 +24,24 @@ extension ARM11CPU {
         if doubleword {
             guard location & 3 == 0 else { throw MiscellaneousTransferFault.unaligned(location) }
             if load {
-                let first = try memory.read32(location), second = try memory.read32(location &+ 4)
+                let first = try guestRead32(memory, location), second = try guestRead32(memory, location &+ 4)
                 registers[rd] = first; registers[rd + 1] = second
             } else {
-                try memory.write32(location, registers[rd])
-                try memory.write32(location &+ 4, registers[rd + 1])
+                try guestWrite32(memory, location, registers[rd])
+                try guestWrite32(memory, location &+ 4, registers[rd + 1])
             }
         } else if load {
-            let low = UInt32(try memory.read8(location))
+            let low = UInt32(try guestRead8(memory, location))
             if kind == 2 {
                 registers[rd] = UInt32(bitPattern: Int32(Int8(bitPattern: UInt8(low))))
             } else {
-                let high = UInt32(try memory.read8(location &+ 1))
+                let high = UInt32(try guestRead8(memory, location &+ 1))
                 let value = low | (high << 8)
                 registers[rd] = kind == 3 ? UInt32(bitPattern: Int32(Int16(bitPattern: UInt16(value)))) : value
             }
         } else {
-            try memory.write8(location, UInt8(truncatingIfNeeded: registers[rd]))
-            try memory.write8(location &+ 1, UInt8(truncatingIfNeeded: registers[rd] >> 8))
+            try guestWrite8(memory, location, UInt8(truncatingIfNeeded: registers[rd]))
+            try guestWrite8(memory, location &+ 1, UInt8(truncatingIfNeeded: registers[rd] >> 8))
         }
         if writeback { registers[rn] = adjusted }
         pc = address &+ 4

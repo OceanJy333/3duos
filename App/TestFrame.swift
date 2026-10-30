@@ -1,5 +1,5 @@
-// Input: the top or bottom screen and a small synthetic A32 program.
-// Output: a labeled framebuffer modified by ARM11CPU and decoded to RGBA.
+// Input: the top or bottom screen, a frame number, and a small synthetic A32 program.
+// Output: a labeled framebuffer with a moving square drawn by ARM11CPU, decoded to RGBA.
 // Pos: core-to-Metal integration demonstration; no game code is executed.
 import UIKit
 
@@ -14,8 +14,10 @@ enum TestFrameError: LocalizedError {
 }
 
 private final class TestMemory: ARMMemory {
-    // MOV r1,#48; STRB r1,[r0],#1; SUBS r2,r2,#1; BNE to STRB; SVC #0.
-    private let program: [UInt32] = [0xE3A01030, 0xE4C01001, 0xE2522001, 0x1AFFFFFC, 0xEF000000]
+    // Fills r3 columns of r2 bytes with r1, starting at r0 and advancing r5 bytes between columns:
+    // MOV r4,r2; STRB r1,[r0],#1; SUBS r4,r4,#1; BNE; ADD r0,r0,r5; SUBS r3,r3,#1; BNE; SVC #0.
+    private let program: [UInt32] = [0xE1A04002, 0xE4C01001, 0xE2544001, 0x1AFFFFFC,
+                                     0xE0800005, 0xE2533001, 0x1AFFFFF8, 0xEF000000]
     var framebuffer: Data
     init(_ framebuffer: Data) { self.framebuffer = framebuffer }
     func read8(_ address: UInt32) throws -> UInt8 { framebuffer[Int(address - 0x1000)] }
@@ -26,8 +28,36 @@ private final class TestMemory: ARMMemory {
     }
 }
 
-enum TestFrame {
-    static func make(_ screen: ThreeDSScreen) throws -> DecodedScreenFrame {
+final class TestScene {
+    private static let side = 40
+    private let screen: ThreeDSScreen
+    private let base: Data
+
+    init(_ screen: ThreeDSScreen) {
+        self.screen = screen
+        base = Self.background(screen)
+    }
+
+    // The square sweeps the screen at 4 pixels per frame.
+    func frame(_ index: Int) throws -> DecodedScreenFrame {
+        let side = Self.side, travel = screen.width - side
+        let x = (index * 4) % (2 * travel)
+        let left = x < travel ? x : 2 * travel - x
+        let top = 190
+        let memory = TestMemory(base)
+        let cpu = ARM11CPU()
+        cpu.registers[0] = 0x1000 + UInt32(left * 240 * 3 + (240 - top - side) * 3)
+        cpu.registers[1] = 255
+        cpu.registers[2] = UInt32(side * 3)
+        cpu.registers[3] = UInt32(side)
+        cpu.registers[5] = UInt32(240 * 3 - side * 3)
+        var stop = ARMStop.running
+        while stop == .running { stop = cpu.step(memory: memory) }
+        guard stop == .supervisorCall(0), cpu.registers[3] == 0 else { throw TestFrameError.cpuStopped(stop) }
+        return try FramebufferDecoder.decode(ThreeDSFramebuffer(screen: screen, bytes: memory.framebuffer))
+    }
+
+    private static func background(_ screen: ThreeDSScreen) -> Data {
         let width = screen.width, height = screen.height
         var pixels = Data(count: width * height * 4)
         pixels.withUnsafeMutableBytes { bytes in
@@ -58,16 +88,6 @@ enum TestFrame {
                 bgr[dest] = pixels[source + 2]; bgr[dest + 1] = pixels[source + 1]; bgr[dest + 2] = pixels[source]
             }
         }
-        let memory = TestMemory(bgr)
-        let cpu = ARM11CPU()
-        cpu.registers[0] = 0x1000
-        cpu.registers[2] = 720
-        var stop = ARMStop.running
-        while stop == .running { stop = cpu.step(memory: memory) }
-        guard stop == .supervisorCall(0), cpu.registers[2] == 0,
-              memory.framebuffer.prefix(720).allSatisfy({ $0 == 48 }) else {
-            throw TestFrameError.cpuStopped(stop)
-        }
-        return try FramebufferDecoder.decode(ThreeDSFramebuffer(screen: screen, bytes: memory.framebuffer))
+        return bgr
     }
 }

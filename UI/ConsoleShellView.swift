@@ -70,7 +70,9 @@ final class ConsoleShellView: UIView {
             control.shape = (4...7).contains(index) ? .circle : .rounded
             control.accessibilityLabel = label
             control.addAction(UIAction { [weak self] _ in self?.onButton?(button, true) }, for: .touchDown)
-            control.addAction(UIAction { [weak self] _ in self?.onButton?(button, false) }, for: [.touchUpInside, .touchUpOutside, .touchCancel])
+            // Accessibility and keyboard activation send only the release; pressing again first is a no-op for real touches.
+            control.addAction(UIAction { [weak self] _ in self?.onButton?(button, true); self?.onButton?(button, false) },
+                              for: [.touchUpInside, .touchUpOutside, .touchCancel, .primaryActionTriggered])
             addSubview(control)
             buttons.append(control)
         }

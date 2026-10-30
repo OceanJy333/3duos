@@ -17,12 +17,14 @@ final class LibraryScreens {
     var onSelect: ((URL) -> Void)?
     var onOpen: (() -> Void)?
     var onTest: (() -> Void)?
+    var onEffects: (() -> Void)?
     var onImport: (() -> Void)?
     private let emblem = UIImageView()
     private let title = UILabel()
     private let subtitle = UILabel()
     private let cards = UIStackView()
     private let open = UIButton(type: .system)
+    private let effects = UIButton(type: .system)
     private let bootTop = UILabel()
     private let bootBottom = UILabel()
     private var libraryTop: UIView!
@@ -87,11 +89,15 @@ final class LibraryScreens {
         test.titleLabel?.font = .systemFont(ofSize: 10, weight: .semibold)
         test.tintColor = ink
         test.addAction(UIAction { [weak self] _ in self?.onTest?() }, for: .touchUpInside)
+        effects.titleLabel?.font = .systemFont(ofSize: 10, weight: .semibold)
+        effects.titleLabel?.adjustsFontSizeToFitWidth = true
+        effects.tintColor = ink
+        effects.addAction(UIAction { [weak self] _ in self?.onEffects?() }, for: .touchUpInside)
         open.setTitle("Open  ▶", for: .normal)
         open.titleLabel?.font = .systemFont(ofSize: 11, weight: .bold)
         open.tintColor = UIColor(red: 0.18, green: 0.48, blue: 0.42, alpha: 1)
         open.addAction(UIAction { [weak self] _ in self?.onOpen?() }, for: .touchUpInside)
-        let actions = UIStackView(arrangedSubviews: [importButton, test, open])
+        let actions = UIStackView(arrangedSubviews: [importButton, test, effects, open])
         actions.distribution = .fillEqually
         actions.backgroundColor = UIColor.white.withAlphaComponent(0.72)
         let bottomStack = UIStackView(arrangedSubviews: [bottomBar, scroll, actions])
@@ -111,6 +117,10 @@ final class LibraryScreens {
             label.isHidden = true
             pin(label, inside: screen, inset: 10)
         }
+    }
+
+    func setEffectsTitle(_ title: String) {
+        effects.setTitle("MetalFX: \(title)", for: .normal)
     }
 
     func update(games: [URL], selected: URL?, metadata: [URL: LibraryGameInfo]) {

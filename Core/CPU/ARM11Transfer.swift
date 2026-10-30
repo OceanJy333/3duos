@@ -3,6 +3,38 @@
 // pos: ARM11 interpreter memory operations
 
 extension ARM11CPU {
+    // Guest accesses try the published host page first, then the ARMMemory (which reports the precise fault).
+    @inline(__always) func guestRead32(_ memory: ARMMemory, _ address: UInt32) throws -> UInt32 {
+        if let value = pageTable?.load32(address) { return value }
+        return try memory.read32(address)
+    }
+
+    @inline(__always) func guestWrite32(_ memory: ARMMemory, _ address: UInt32, _ value: UInt32) throws {
+        if pageTable?.store32(address, value) == true { return }
+        try memory.write32(address, value)
+    }
+
+    @inline(__always) func guestRead8(_ memory: ARMMemory, _ address: UInt32) throws -> UInt8 {
+        if let value = pageTable?.load8(address) { return value }
+        return try memory.read8(address)
+    }
+
+    @inline(__always) func guestWrite8(_ memory: ARMMemory, _ address: UInt32, _ value: UInt8) throws {
+        if pageTable?.store8(address, value) == true { return }
+        try memory.write8(address, value)
+    }
+
+    // ARMv6 with unaligned access enabled: a word access at any address, little endian, no rotation.
+    func readWord(_ location: UInt32, _ memory: ARMMemory) throws -> UInt32 {
+        if location & 3 == 0 { return try guestRead32(memory, location) }
+        return try (0..<4).reduce(UInt32(0)) { $0 | UInt32(try guestRead8(memory, location &+ UInt32($1))) << ($1 * 8) }
+    }
+
+    func writeWord(_ location: UInt32, _ value: UInt32, _ memory: ARMMemory) throws {
+        if location & 3 == 0 { return try guestWrite32(memory, location, value) }
+        for i in 0..<4 { try guestWrite8(memory, location &+ UInt32(i), UInt8(truncatingIfNeeded: value >> (i * 8))) }
+    }
+
     func transfer(_ op: UInt32, at address: UInt32, memory: ARMMemory) throws -> ARMStop {
         let registerOffset = op & (1 << 25) != 0
         let pre = op & (1 << 24) != 0
@@ -28,7 +60,7 @@ extension ARM11CPU {
         let adjusted = add ? base &+ offset : base &- offset
         let location = pre ? adjusted : base
         if load {
-            let value = byte ? UInt32(try memory.read8(location)) : try memory.read32(location)
+            let value = byte ? UInt32(try guestRead8(memory, location)) : try readWord(location, memory)
             if writeback { registers[rn] = adjusted }
             if rd == 15 {
                 cpsr = (cpsr & ~0x20) | ((value & 1) << 5)
@@ -37,8 +69,8 @@ extension ARM11CPU {
         } else {
             // On ARM11, storing r15 writes the instruction address + 12.
             let value = rd == 15 ? address &+ 12 : registers[rd]
-            if byte { try memory.write8(location, UInt8(truncatingIfNeeded: value)) }
-            else { try memory.write32(location, value) }
+            if byte { try guestWrite8(memory, location, UInt8(truncatingIfNeeded: value)) }
+            else { try writeWord(location, value, memory) }
             if writeback { registers[rn] = adjusted }
             pc = address &+ 4
         }

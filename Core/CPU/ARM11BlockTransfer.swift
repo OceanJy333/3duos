@@ -23,11 +23,11 @@ extension ARM11CPU {
         var loadedPC: UInt32?
         for register in 0..<16 where list & (1 << register) != 0 {
             if load {
-                let value = try memory.read32(address)
+                let value = try guestRead32(memory, address)
                 if register == 15 { loadedPC = value } else { registers[register] = value }
             } else {
                 let value = register == 15 ? instructionAddress &+ 12 : registers[register]
-                try memory.write32(address, value)
+                try guestWrite32(memory, address, value)
             }
             address = address &+ 4
         }

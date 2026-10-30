@@ -26,6 +26,9 @@ struct ThreeDSFramebuffer {
 struct DecodedScreenFrame {
     let screen: ThreeDSScreen
     let rgba: Data
+    var depth: [Float]? = nil   // row-major 0...1, nearer is smaller; nil when the renderer has none
+    var motion: [SIMD2<Float>]? = nil   // previous minus current position in LCD pixels; nil falls back to block matching
+    var jitter = SIMD2<Float>.zero      // sub-pixel offset the renderer applied to this frame, in LCD pixels
 }
 
 enum FramebufferError: Error {
