@@ -1,4 +1,4 @@
-// input: a decoded PICADrawState and the bound texture sizes.
+// input: a decoded PICADrawState and the bound textures (their sizes may be pre-scaled).
 // output: the `Draw` uniform block of PICAMetalShaders (16-byte slots in declaration order) and Metal pipeline/depth-stencil keys.
 // pos: translation of PICA register state to Metal state, done once per draw on the CPU.
 import Metal
@@ -7,7 +7,7 @@ enum PICAMetalState {
     // Slots of one `Draw` block: 72 for the stage, texture, fog and lighting fields, then 9 per light.
     static let slotCount = 72 + 8 * 9
 
-    static func uniforms(_ s: PICADrawState, textures: [PICADecodedTexture?], scale: Int) -> [SIMD4<UInt32>] {
+    static func uniforms(_ s: PICADrawState, textures: [MTLTexture?], scale: Int) -> [SIMD4<UInt32>] {
         var slots: [SIMD4<UInt32>] = []
         slots.reserveCapacity(slotCount)
         func i(_ a: Int, _ b: Int = 0, _ c: Int = 0, _ d: Int = 0) { slots.append(SIMD4(UInt32(bitPattern: Int32(a)), UInt32(bitPattern: Int32(b)), UInt32(bitPattern: Int32(c)), UInt32(bitPattern: Int32(d)))) }

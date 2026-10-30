@@ -9,6 +9,14 @@ final class PICADecodedTexture {
     fileprivate var raw: [UInt8]
     fileprivate var checkedAt = -1
     fileprivate(set) var version = 0      // bumped on every decode, so GPU copies know when to refresh
+    fileprivate(set) var format = 0
+    private var hashed: (version: Int, hash: UInt64) = (-1, 0)
+
+    // CityHash64 of the raw level-0 bytes: the name texture packs use for this texture.
+    var contentHash: UInt64 {
+        if hashed.version != version { hashed = (version, raw.withUnsafeBytes { CityHash.hash64($0) }) }
+        return hashed.hash
+    }
 
     fileprivate init(width: Int, height: Int, raw: [UInt8]) {
         self.width = width; self.height = height; self.raw = raw
@@ -48,6 +56,7 @@ final class PICATextureCache {
 
     private func decode(_ texture: PICADecodedTexture, _ unit: PICATextureUnit) {
         texture.version += 1
+        texture.format = unit.format
         texture.raw.withUnsafeBufferPointer {
             PICATextureFormat.decode($0.baseAddress!, width: texture.width, height: texture.height, format: unit.format, into: texture.pixels)
         }

@@ -180,8 +180,8 @@ final class AudioSource {
             if index + 2 >= available { index = available - 2; break }
             let x0 = input(index), x1 = input(index + 1), f = Int64(position & (scale - 1))
             frame[out] = interpolate
-                ? (Int16(truncatingIfNeeded: Int64(x0.0) + f * Int64(x1.0 - x0.0) / Int64(scale)),
-                   Int16(truncatingIfNeeded: Int64(x0.1) + f * Int64(x1.1 - x0.1) / Int64(scale)))
+                ? (Int16(truncatingIfNeeded: Int64(x0.0) + f * (Int64(x1.0) - Int64(x0.0)) / Int64(scale)),
+                   Int16(truncatingIfNeeded: Int64(x0.1) + f * (Int64(x1.1) - Int64(x0.1)) / Int64(scale)))
                 : x0
             out += 1
             position += step

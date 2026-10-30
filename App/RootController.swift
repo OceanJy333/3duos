@@ -190,6 +190,8 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             runner = GameRunner(kernel: kernel)
             let mode = Self.effects[effectIndex].mode
             runner?.setInternalScale(internalScale(for: mode))
+            runner?.setTextureFiltering(true)
+            runner?.setTexturePack(programID: cartridge.programID)
             runner?.setMetalFXInputs(mode == .temporal && MTLCreateSystemDefaultDevice().map(MetalFXScreenPipeline.supportsTemporal) == true)
             runner?.start()
             shell.onButton = { [weak self] id, pressed in self?.runner?.button(id, pressed: pressed) }
@@ -201,11 +203,11 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         }
     }
 
-    // The game renders at the display's native pixels (spatial MetalFX: two thirds of them, which it sharpens back up).
-    // Temporal MetalFX then accumulates the jittered frames into several samples per display pixel, like supersampling.
+    // With MetalFX the game renders at about two thirds of the display's pixels and the scaler reconstructs the rest
+    // (temporal: from jittered frames and exact motion); that saves over half the pixel work. Without it, native pixels.
     private func internalScale(for mode: MetalFXMode) -> Int {
         let native = Double(shell.topScreen.bounds.width * shell.topScreen.contentScaleFactor) / 400
-        let reconstructed: Double = mode == .spatial ? 1.5 : 1
+        let reconstructed: Double = mode == .off ? 1 : 1.5
         return min(4, max(1, Int((native / reconstructed - 0.05).rounded(.up))))
     }
 

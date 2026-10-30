@@ -101,6 +101,11 @@ if CommandLine.arguments.count > 1 {
     }
     kernel.recordHistory = options.contains("--history")
     if options.contains("--motion") { kernel.gpu.renderer(memory: kernel.memory).emitsMotionInputs = true }
+    if options.contains("--texfilter") { kernel.gpu.renderer(memory: kernel.memory).filtersTextures = true }
+    // --texpack=DIR loads replacement textures, --texdump=DIR writes the game's textures (Citra/Azahar names).
+    let packPath = options.first(where: { $0.hasPrefix("--texpack=") }).map { URL(fileURLWithPath: String($0.dropFirst(10))) }
+    let dumpPath = options.first(where: { $0.hasPrefix("--texdump=") }).map { URL(fileURLWithPath: String($0.dropFirst(10))) }
+    if packPath != nil || dumpPath != nil { kernel.gpu.renderer(memory: kernel.memory).texturePack = PICATexturePack(directory: packPath, dumpDirectory: dumpPath) }
     let shotDirectory = options.first(where: { $0.hasPrefix("--shot=") }).map { String($0.dropFirst(7)) }
     func writeShots(_ suffix: String) throws {
         guard let shotDirectory else { return }
@@ -127,14 +132,6 @@ if CommandLine.arguments.count > 1 {
                 hires.reserveCapacity(w * h * 3 + 20)
                 for i in 0..<(w * h) { hires.append(contentsOf: [p[i * 4], p[i * 4 + 1], p[i * 4 + 2]]) }
                 try hires.write(to: URL(fileURLWithPath: "\(shotDirectory)/\(screen)-hires\(suffix).ppm"))
-            }
-            // --motion: motion magnitude as gray (8 px = white) and its mean/max, from the renderer's last finished frame.
-            let motion = kernel.gpu.renderer(memory: kernel.memory).motion.lcdMotion
-            if screen == .top, !motion.isEmpty {
-                var map = Data("P5 400 240 255\n".utf8), moving = 0, peak: Float = 0
-                for m in motion { let length = (m * m).sum().squareRoot(); peak = max(peak, length); if length > 0.1 { moving += 1 }; map.append(UInt8(min(255, length * 32))) }
-                try map.write(to: URL(fileURLWithPath: "\(shotDirectory)/motion\(suffix).pgm"))
-                print("motion\(suffix): moving pixels \(moving)/96000, peak \(peak) px, jitter \(kernel.gpu.renderer(memory: kernel.memory).published.shift)")
             }
             // --motion: motion magnitude as gray (8 px = white) and its mean/max, from the renderer's last finished frame.
             let motion = kernel.gpu.renderer(memory: kernel.memory).motion.lcdMotion

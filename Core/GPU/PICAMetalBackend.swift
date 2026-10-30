@@ -54,7 +54,7 @@ final class PICAMetalBackend: PICAPixelBackend {
     }
     private var arenaOffset = 0
     private var lutOffset = -1, fogOffset = -1, programOffset = -1, programVersion = -1
-    private var textureCache: [ObjectIdentifier: (source: PICADecodedTexture, version: Int, texture: MTLTexture)] = [:]
+    let textures: PICAMetalTextures
     private(set) var waitNanoseconds: UInt64 = 0   // time the emulation thread waited for the GPU
     // GPU execution time of completed command buffers (written on Metal's completion thread).
     final class Statistics {
@@ -86,6 +86,7 @@ final class PICAMetalBackend: PICAPixelBackend {
         kernels = (c, z, l); uploads = (uc, uz)
         let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Uint, width: 1, height: 1, mipmapped: false)
         dummyTexture = device.makeTexture(descriptor: d)!
+        textures = PICAMetalTextures(device: device, queue: queue)
     }
 
     func makeCommandBuffer() -> MTLCommandBuffer {
@@ -164,14 +165,15 @@ final class PICAMetalBackend: PICAPixelBackend {
             if scissor.width == 0 || scissor.height == 0 { return }
         }
         encoder.setScissorRect(scissor)
-        let uniforms = PICAMetalState.uniforms(state, textures: textures, scale: scale)
+        let bound = (0..<3).map { u in textures[u].map { self.textures.texture($0, linear: state.textures[u].linear) } }
+        let uniforms = PICAMetalState.uniforms(state, textures: bound, scale: scale)
         uniforms.withUnsafeBytes { encoder.setFragmentBytes($0.baseAddress!, length: $0.count, index: 1) }
         encoder.setFragmentBuffer(arena, offset: max(lutOffset, 0), index: 2)
         encoder.setFragmentBuffer(arena, offset: max(fogOffset, 0), index: 3)
         let v = state.viewport, m = state.merger
         var motionInfo = (SIMD4(v.halfWidth, v.halfHeight, v.cornerX, v.cornerY), Int32(m.blendEnabled ? 1 : 0), Int32(m.sourceRGB == 6 ? 1 : 0))
         encoder.setFragmentBytes(&motionInfo, length: MemoryLayout.size(ofValue: motionInfo), index: 4)
-        for unit in 0..<3 { encoder.setFragmentTexture(textures[unit].map(texture) ?? dummyTexture, index: unit) }
+        for unit in 0..<3 { encoder.setFragmentTexture(bound[unit] ?? dummyTexture, index: unit) }
         // cullMode 1 keeps clockwise triangles of the y-down target, 2 counter-clockwise ones.
         encoder.setFrontFacing(.counterClockwise)
         encoder.setCullMode(state.viewport.cullMode == 1 ? .back : state.viewport.cullMode == 2 ? .front : .none)
@@ -317,16 +319,5 @@ final class PICAMetalBackend: PICAPixelBackend {
         let s = device.makeDepthStencilState(descriptor: PICAMetalState.describe(key))!
         depthStates[key] = s
         return s
-    }
-
-    private func texture(_ t: PICADecodedTexture) -> MTLTexture {
-        let id = ObjectIdentifier(t)
-        if let entry = textureCache[id], entry.source === t, entry.version == t.version { return entry.texture }
-        let d = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: .rgba8Uint, width: t.width, height: t.height, mipmapped: false)
-        let texture = device.makeTexture(descriptor: d)!      // a new texture: queued GPU work may still read the old one
-        texture.replace(region: MTLRegionMake2D(0, 0, t.width, t.height), mipmapLevel: 0, withBytes: t.pixels, bytesPerRow: t.width * 4)
-        if textureCache.count > 512 { textureCache.removeAll() }
-        textureCache[id] = (t, t.version, texture)
-        return texture
     }
 }

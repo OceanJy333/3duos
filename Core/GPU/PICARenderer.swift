@@ -66,6 +66,8 @@ final class PICARenderer {
         backend.finish()
         guard let m = PICAMetalBackend(scale: internalScale) else { return }
         m.tracksMotion = emitsMotionInputs
+        m.textures.filters = filtersTextures
+        m.textures.pack = texturePack
         metal = m
     }
 
@@ -120,6 +122,10 @@ final class PICARenderer {
 
     // Sub-pixel jitter for MetalFX temporal accumulation: a Halton(2,3) offset in LCD pixels, applied to top-screen viewports.
     // With Metal the renderer also writes exact per-pixel motion; the software path rasterizes it on the CPU.
+    // Pre-scales bilinear-sampled textures 2x on the GPU (Metal only), so magnified textures stay sharp.
+    var filtersTextures = false { didSet { metal?.textures.filters = filtersTextures } }
+    // Replacement textures (Citra/Azahar pack layout) and texture dumping (Metal only).
+    var texturePack: PICATexturePack? { didSet { metal?.textures.pack = texturePack } }
     var emitsMotionInputs = false { didSet { metal?.tracksMotion = emitsMotionInputs } }
     var jittersTopScreen = true
     private var frameIndex = 0

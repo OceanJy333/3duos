@@ -33,6 +33,7 @@
 		388E3DDA02860EF5F4CCE64D /* ProcessLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90C733DC165C9874140FC7DD /* ProcessLoader.swift */; };
 		3EE626A59D0F275E9E512F80 /* PICAMetalVertex.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A85252C3A85E3C62610269F /* PICAMetalVertex.swift */; };
 		3F3711427F273B13BD921B19 /* PICAMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21C7EA2DA859E086AE6DD05B /* PICAMotion.swift */; };
+		42567394C48A95A6AB3ED58A /* PICATexturePack.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78193B1612E3B3097F0B1EDB /* PICATexturePack.swift */; };
 		430463367C88A5EE9B388145 /* CartridgeReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 551870F16312E0E5730C5BD1 /* CartridgeReader.swift */; };
 		4F809223E6351F23A8AE3606 /* ARM11Exclusive.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79EC612E2DF9445E2B59DF3B /* ARM11Exclusive.swift */; };
 		5172DC8C77B83B21A5D6BF20 /* Kernel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35A2951555310CA6960AFF07 /* Kernel.swift */; };
@@ -67,6 +68,7 @@
 		A16696A3360CA1F95FE8310B /* HIDService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03EEB3C86BFC3021352DE824 /* HIDService.swift */; };
 		A1787364EBC1C63487C5BFEE /* ARM11Run.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EDEAAB61138001B5E6ABE4E /* ARM11Run.swift */; };
 		A2B218B9170EEFF0C6EA4DC0 /* PICAVertexInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BD9C37BC36267F935E1C1DC /* PICAVertexInput.swift */; };
+		A3293E120DAB316694BB96E3 /* PICAMetalTextures.swift in Sources */ = {isa = PBXBuildFile; fileRef = F085430BD38E0ED044551A7B /* PICAMetalTextures.swift */; };
 		A405120C0D54AFB86A570F8D /* PICASurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19607B03EF27C4F56AEB7A46 /* PICASurface.swift */; };
 		A8623946C4C95404ABA5B22B /* PICARenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F60DE2EF7A74BB20EA748B /* PICARenderer.swift */; };
 		A95EF920B13ABF7DB5CB9694 /* PICADrawState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E75DE40C89A7A2BB115227 /* PICADrawState.swift */; };
@@ -85,6 +87,7 @@
 		DB3A2354B4C5CB7CADA4CEE2 /* ARM11CPU.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB3AC90BE811C782096E7B7 /* ARM11CPU.swift */; };
 		DC96DC67677729CB8B714BEF /* PICAShaderProgram.swift in Sources */ = {isa = PBXBuildFile; fileRef = F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */; };
 		DE050734B2F8A65114FDF9F3 /* SVCDispatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = D38CA4BC0255E378D57F2F28 /* SVCDispatch.swift */; };
+		DF45BB0C386A5E75E742D51B /* CityHash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42C23FBAE84DB78D020174D5 /* CityHash.swift */; };
 		EC9087F0C0574AB2A860D04B /* GameRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05FB9A43840E7571FB391985 /* GameRunner.swift */; };
 		EDFA5726932EE8B7F6629FCF /* PICAMath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E86D02FCDCC5F4BA8463BE /* PICAMath.swift */; };
 		EE180E2F188DFF62DF8EE901 /* GPUState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D6F5D58D2378BA549D78C8A /* GPUState.swift */; };
@@ -121,6 +124,7 @@
 		3B230414BF222EF4225779F2 /* ARM11Multiply.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Multiply.swift; sourceTree = "<group>"; };
 		3BD9C37BC36267F935E1C1DC /* PICAVertexInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAVertexInput.swift; sourceTree = "<group>"; };
 		4088259D1963EBAA599DB6F1 /* PICAFragment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAFragment.swift; sourceTree = "<group>"; };
+		42C23FBAE84DB78D020174D5 /* CityHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityHash.swift; sourceTree = "<group>"; };
 		44A6655AE065DE84B707EF6D /* GPUTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUTransfer.swift; sourceTree = "<group>"; };
 		4AC626CD6C1EF87D1E0562FF /* PICARegisters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARegisters.swift; sourceTree = "<group>"; };
 		5238B56B44401438FD4DF279 /* PICALighting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICALighting.swift; sourceTree = "<group>"; };
@@ -132,6 +136,7 @@
 		6A0C70F1848841FE4356D945 /* APTService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APTService.swift; sourceTree = "<group>"; };
 		6A9CAE5C00E1181DE8405B49 /* ARM11VFPSystem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11VFPSystem.swift; sourceTree = "<group>"; };
 		6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalBackend.swift; sourceTree = "<group>"; };
+		78193B1612E3B3097F0B1EDB /* PICATexturePack.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICATexturePack.swift; sourceTree = "<group>"; };
 		79EC612E2DF9445E2B59DF3B /* ARM11Exclusive.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Exclusive.swift; sourceTree = "<group>"; };
 		7B0DE7386C67E49755843178 /* ARM11DataProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11DataProcessing.swift; sourceTree = "<group>"; };
 		7E725B804BE0E8D01C842814 /* ConsoleInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleInput.swift; sourceTree = "<group>"; };
@@ -173,6 +178,7 @@
 		DD9FDFDFF68D343E1DD11F2B /* ARM11MiscellaneousTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11MiscellaneousTransfer.swift; sourceTree = "<group>"; };
 		DDA8E214BF42261B556608F9 /* PICAOutputMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAOutputMerger.swift; sourceTree = "<group>"; };
 		E52FDC6B0FC36F2C39B369E2 /* PICARasterizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARasterizer.swift; sourceTree = "<group>"; };
+		F085430BD38E0ED044551A7B /* PICAMetalTextures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalTextures.swift; sourceTree = "<group>"; };
 		F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAShaderProgram.swift; sourceTree = "<group>"; };
 		F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		FF498BB5B37A9842F6A6A48E /* SVCThread.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SVCThread.swift; sourceTree = "<group>"; };
@@ -200,6 +206,7 @@
 		15F5F5F7A7A6BFC251E44B17 /* GPU */ = {
 			isa = PBXGroup;
 			children = (
+				42C23FBAE84DB78D020174D5 /* CityHash.swift */,
 				0D6F5D58D2378BA549D78C8A /* GPUState.swift */,
 				44A6655AE065DE84B707EF6D /* GPUTransfer.swift */,
 				CCD29E7F1C3EAAAFA1695F0E /* PICAClipper.swift */,
@@ -214,6 +221,7 @@
 				0989786F5A0440A1F5B5C652 /* PICAMetalLighting.swift */,
 				65693497CE0B5C8B033A5C1B /* PICAMetalShaders.swift */,
 				2C414BFD06F02E0582E7438F /* PICAMetalState.swift */,
+				F085430BD38E0ED044551A7B /* PICAMetalTextures.swift */,
 				0A85252C3A85E3C62610269F /* PICAMetalVertex.swift */,
 				21C7EA2DA859E086AE6DD05B /* PICAMotion.swift */,
 				DDA8E214BF42261B556608F9 /* PICAOutputMerger.swift */,
@@ -226,6 +234,7 @@
 				19607B03EF27C4F56AEB7A46 /* PICASurface.swift */,
 				89E95209FF6ECAD4319E780B /* PICATextureCache.swift */,
 				602DE6D3606D83836D67B43F /* PICATextureDecode.swift */,
+				78193B1612E3B3097F0B1EDB /* PICATexturePack.swift */,
 				3BD9C37BC36267F935E1C1DC /* PICAVertexInput.swift */,
 				D11376DD3F386A4398CEC71D /* PICAVertexProcessor.swift */,
 			);
@@ -472,6 +481,7 @@
 				7C1EB50F26463A9A24AC35EC /* CFGService.swift in Sources */,
 				2AA033153FFCDA9F2C9112F9 /* CartridgeProgram.swift in Sources */,
 				430463367C88A5EE9B388145 /* CartridgeReader.swift in Sources */,
+				DF45BB0C386A5E75E742D51B /* CityHash.swift in Sources */,
 				34FCEEE2F5E44DB47C36DE41 /* ConsoleControls.swift in Sources */,
 				BDEC5FB45BDFF26E0B2E4CF7 /* ConsoleInput.swift in Sources */,
 				677988445A52908CFA58133B /* ConsoleShellView.swift in Sources */,
@@ -504,6 +514,7 @@
 				BA4CE8BB0D9626B3B7E8ED06 /* PICAMetalLighting.swift in Sources */,
 				106CA0888942281B49355355 /* PICAMetalShaders.swift in Sources */,
 				2B386B3434BC8B987E44C086 /* PICAMetalState.swift in Sources */,
+				A3293E120DAB316694BB96E3 /* PICAMetalTextures.swift in Sources */,
 				3EE626A59D0F275E9E512F80 /* PICAMetalVertex.swift in Sources */,
 				3F3711427F273B13BD921B19 /* PICAMotion.swift in Sources */,
 				07B01372611F6DA8DFD284CB /* PICAOutputMerger.swift in Sources */,
@@ -516,6 +527,7 @@
 				A405120C0D54AFB86A570F8D /* PICASurface.swift in Sources */,
 				96DDDD322CF37A83A9696AE8 /* PICATextureCache.swift in Sources */,
 				77A3B28A119214132D34A213 /* PICATextureDecode.swift in Sources */,
+				42567394C48A95A6AB3ED58A /* PICATexturePack.swift in Sources */,
 				A2B218B9170EEFF0C6EA4DC0 /* PICAVertexInput.swift in Sources */,
 				C1E76EF4377D5E0925F84DA3 /* PICAVertexProcessor.swift in Sources */,
 				5517088E836F5ACC3448AF11 /* PagedMemory.swift in Sources */,

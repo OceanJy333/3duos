@@ -63,6 +63,20 @@ final class GameRunner {
         kernel.gpu.renderer(memory: kernel.memory).internalScale = scale
     }
 
+    // Before start(): replacement textures from Documents/textures/<program ID>/ (Citra/Azahar layout). TDS_TEXDUMP=1 also
+    // writes every texture the game uses to Documents/dump/textures/<program ID>/, named for making a pack.
+    func setTexturePack(programID: UInt64) {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0], id = String(format: "%016llX", programID)
+        let dump = ProcessInfo.processInfo.environment["TDS_TEXDUMP"] == "1" ? documents.appendingPathComponent("dump/textures/\(id)") : nil
+        let pack = PICATexturePack(directory: documents.appendingPathComponent("textures/\(id)"), dumpDirectory: dump)
+        kernel.gpu.renderer(memory: kernel.memory).texturePack = pack.isEmpty ? nil : pack
+    }
+
+    // Before start(): sharper magnified textures. TDS_TEXFILTER=0 in the environment turns it off for comparisons.
+    func setTextureFiltering(_ on: Bool) {
+        kernel.gpu.renderer(memory: kernel.memory).filtersTextures = on && ProcessInfo.processInfo.environment["TDS_TEXFILTER"] != "0"
+    }
+
     // Before start(): temporal MetalFX needs jitter, exact motion and the reactive mask from the renderer.
     func setMetalFXInputs(_ on: Bool) { kernel.gpu.renderer(memory: kernel.memory).emitsMotionInputs = on }
 
