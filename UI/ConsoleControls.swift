@@ -65,7 +65,8 @@ final class ConsoleCirclePad: UIView {
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool { bounds.inset(by: touchInsets).contains(point) }
     override func layoutSubviews() {
         super.layoutSubviews()
-        let size = CGSize(width: bounds.width * knobSize, height: bounds.height * knobSize)
+        let diameter = min(bounds.width, bounds.height) * knobSize
+        let size = CGSize(width: diameter, height: diameter)
         knob.bounds = CGRect(origin: .zero, size: size)
         knob.center = CGPoint(x: bounds.midX, y: bounds.midY)
         knob.layer.cornerRadius = min(size.width, size.height) / 2
@@ -141,7 +142,8 @@ final class ConsoleButton: UIButton {
 
     override func layoutSubviews() {
         super.layoutSubviews()
-        pressLayer.frame = bounds.insetBy(dx: bounds.width * 0.08, dy: bounds.height * 0.08)
+        pressLayer.bounds = bounds
+        pressLayer.center = CGPoint(x: bounds.midX, y: bounds.midY)
         let side = min(pressLayer.bounds.width, pressLayer.bounds.height)
         pressLayer.layer.cornerRadius = shape == .circle ? side / 2 : side * 0.22
     }
@@ -151,7 +153,7 @@ final class ConsoleButton: UIButton {
         UIView.animate(withDuration: pressed ? 0.04 : 0.16, delay: 0,
                        options: [.beginFromCurrentState, .curveEaseOut]) {
             self.pressLayer.alpha = pressed ? 1 : 0
-            self.pressLayer.transform = pressed ? CGAffineTransform(translationX: 0, y: 1).scaledBy(x: 0.93, y: 0.93) : .identity
+            self.pressLayer.transform = pressed ? CGAffineTransform(scaleX: 0.95, y: 0.95) : .identity
         }
     }
 }

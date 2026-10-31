@@ -6,7 +6,8 @@ import MetalKit
 import UIKit
 
 struct ConsoleShellGeometry {
-    static let imageSize = CGSize(width: 1051, height: 1496)
+    // Coordinates are measured on the active all-white bitmap, not the earlier black-bezel skin.
+    static let imageSize = CGSize(width: 1052, height: 1495)
     let area: CGRect
     private func imageRect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> CGRect {
         CGRect(x: area.minX + x / Self.imageSize.width * area.width,
@@ -15,20 +16,20 @@ struct ConsoleShellGeometry {
     }
     var topScreen: CGRect { imageRect(75, 96, 900, 540) }
     var bottomScreen: CGRect { imageRect(215, 828, 620, 504) }
-    var circlePad: CGRect { imageRect(28, 890, 162, 164) }
+    var circlePad: CGRect { imageRect(28, 878, 164, 174) }
     // The pad reads movement from where the thumb lands, so its touch area reaches into the free faceplate above and to
     // the right: the thumb can rest away from the phone's edge and still push fully left.
     var circlePadTouch: CGRect { imageRect(28, 815, 186, 270) }
-    var cStick: CGRect { imageRect(878, 856, 74, 74) }
-    var dpad: [CGRect] { [imageRect(83, 1088, 50, 50), imageRect(40, 1137, 47, 48),
-                            imageRect(130, 1137, 47, 48), imageRect(83, 1183, 50, 50)] }
-    var faceButtons: [CGRect] { [imageRect(916, 948, 60, 60), imageRect(860, 1010, 60, 60),
-                                   imageRect(971, 1010, 60, 60), imageRect(916, 1068, 60, 60)] }
+    var cStick: CGRect { imageRect(877, 852, 73, 74) }
+    var dpad: [CGRect] { [imageRect(85, 1083, 48, 44), imageRect(44, 1127, 42, 50),
+                            imageRect(132, 1127, 43, 50), imageRect(85, 1177, 48, 47)] }
+    var faceButtons: [CGRect] { [imageRect(913, 938, 63, 64), imageRect(858, 998, 63, 63),
+                                   imageRect(967, 998, 63, 63), imageRect(913, 1058, 63, 64)] }
     var shoulders: [CGRect] { [imageRect(0, 750, 100, 54), imageRect(951, 750, 100, 54),
                                 imageRect(100, 750, 100, 54), imageRect(851, 750, 100, 54)] }
-    var select: CGRect { imageRect(251, 1372, 163, 54) }
-    var menu: CGRect { imageRect(464, 1372, 122, 54) }
-    var start: CGRect { imageRect(638, 1372, 163, 54) }
+    var select: CGRect { imageRect(252, 1359, 164, 57) }
+    var menu: CGRect { imageRect(463, 1359, 124, 57) }
+    var start: CGRect { imageRect(634, 1359, 163, 57) }
 }
 
 final class ConsoleShellView: UIView {

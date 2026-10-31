@@ -2,7 +2,7 @@
 
 使用内置 image_gen，参考项目现有白色 XL 皮肤生成。外盖横向、去掉双摄；内外素材均补齐机壳外侧黑底，形成矩形满版纹理。
 
-当前使用全白 XL 内壳，上屏渲染区域保持 900 × 540，以 5:3 显示游戏。上半面板、转轴、空屏均为白色；ABXY 改为蓝绿红黄。触控坐标沿用现有布局。
+当前使用全白 XL 内壳，上屏渲染区域保持 900 × 540，以 5:3 显示游戏。上半面板、转轴、空屏均为白色；ABXY 改为蓝绿红黄。触控坐标按当前 1052 × 1495 位图校准，统一在 `ConsoleShellGeometry` 维护。
 
 ## 全白版本与图标
 
@@ -11,7 +11,7 @@
 - 当前内壳：`App/Assets.xcassets/New3DSWhiteFaceplateXLAllWhite.imageset/new3ds-white-xl-all-white.png`。
 - 当前应用图标：`App/Assets.xcassets/AppIcon.appiconset/3duos-icon.png`，1024 × 1024；纯白底，深灰色「3」与「DUOS」两行粗体字。
 - 图标原始生成图：`Design/WhiteEdition/3duos-icon-type-master.png`；提示词见 `Design/WhiteEdition/typographic-icon-generation.json`。
-- 机身上屏与下屏开孔、摇杆底座、按键位置保持不变；摇杆帽与按下反馈仍由应用实时显示。
+- 机身图片保持不变；摇杆帽、ABXY、十字键和底部按键的触控及反馈对齐当前图案，摇杆帽使用正圆，按压遮罩围绕按键中心缩放。
 - 顶部二次打磨：显示区保持 (75, 96, 900, 540)，缩小摄像头、移除大圆盖与侧滑块、扬声器移到上屏下缘。外盖降低金属反光，使用「3 / DUOS」压印；两张图的完整提示词见 `Design/WhiteEdition/balanced-shell-generation.json`。
 
 ## 加大上屏提示词
