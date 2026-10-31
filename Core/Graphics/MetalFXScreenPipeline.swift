@@ -1,6 +1,6 @@
 // Input: frames of one 3DS screen in presentation order: CPU RGBA8 at LCD size (test scenes, software frames), or GPU frames
 //        with exact depth, motion and reactive mask at the internal resolution.
-// Output: a texture at the display's native size per frame and, when enabled, 1 or 3 interpolated frames leading up to it.
+// Output: a texture at the display's native size per frame and, when enabled, the interpolated frame halfway before it.
 // Pos: MetalFX stage between the frame sources and MetalScreenPresenter; owns every scaler input texture.
 import Metal
 #if canImport(MetalFX)
@@ -55,21 +55,6 @@ kernel void estimateMotion(texture2d<float, access::read> current [[texture(0)]]
     }
     motion.write(float4(float2(vector), 0, 0), gid);
 }
-// A quarter frame from one sharp frame: `source` shifted along the exact motion by `amount` frame intervals (+ toward the
-// past for the previous frame, - for the current one). One frame only, so wrong motion stretches an edge instead of
-// doubling it. The motion is looked up where the pixel sits in the current frame, refined once. `motion` is previous
-// minus current position in input pixels.
-kernel void warpQuarter(texture2d<float> source [[texture(0)]], texture2d<float> motion [[texture(2)]],
-                        texture2d<float, access::write> out [[texture(3)]], constant float2 &shift [[buffer(0)]],
-                        uint2 gid [[thread_position_in_grid]]) {
-    if (gid.x >= out.get_width() || gid.y >= out.get_height()) return;
-    constexpr sampler s(filter::linear, address::clamp_to_edge);
-    float2 uv = (float2(gid) + 0.5) / float2(out.get_width(), out.get_height());
-    float2 texel = 1 / float2(motion.get_width(), motion.get_height());
-    float2 m = motion.sample(s, uv).xy * texel;
-    m = motion.sample(s, uv - shift.x * m).xy * texel;   // shift.x: how far back in the current frame the pixel lies
-    out.write(source.sample(s, uv + shift.y * m), gid);
-}
 """
 
 #if canImport(MetalFX)
@@ -79,7 +64,7 @@ final class MetalFXScreenPipeline {
     let height: Int
     let color: MTLTexture
     let output: MTLTexture
-    // Frames between the previous output and `output`, in display order: [1/2] at 2x, [1/4, 1/2, 3/4] at 4x.
+    // Frames between the previous output and `output`: [1/2] at 2x, none otherwise.
     let phases: [MTLTexture]
     // MetalFX updates this after writing `output` and `phases`; encoders that read them must wait on it.
     let fence: MTLFence?
@@ -90,7 +75,7 @@ final class MetalFXScreenPipeline {
     private let motion: MTLTexture?
     private let depth: MTLTexture?
     private let reactive: MTLTexture?
-    private let motionPipeline: MTLComputePipelineState, warpPipeline: MTLComputePipelineState
+    private let motionPipeline: MTLComputePipelineState
     private var encodeScaler: (MTLCommandBuffer, Bool) -> Void = { _, _ in }
     private var encodeInterpolator: ((MTLCommandBuffer, Bool) -> Void)?
     private var frameIndex = 0
@@ -101,7 +86,7 @@ final class MetalFXScreenPipeline {
 
     init(device: MTLDevice, width: Int, height: Int, outWidth: Int, outHeight: Int, mode: MetalFXMode,
          frameMultiple: Int = 1, framesPerSecond: Float = 30) throws {
-        guard mode != .off, [1, 2, 4].contains(frameMultiple), !(frameMultiple > 1 && mode == .spatial) else {
+        guard mode != .off, [1, 2].contains(frameMultiple), !(frameMultiple > 1 && mode == .spatial) else {
             throw MetalFXError.invalidConfiguration
         }
         let interpolates = frameMultiple > 1
@@ -109,11 +94,8 @@ final class MetalFXScreenPipeline {
         self.width = width
         self.height = height
         let library = try device.makeLibrary(source: kernelSource, options: nil)
-        guard let function = library.makeFunction(name: "estimateMotion"), let warp = library.makeFunction(name: "warpQuarter") else {
-            throw MetalFXError.resourceFailed("kernels")
-        }
+        guard let function = library.makeFunction(name: "estimateMotion") else { throw MetalFXError.resourceFailed("kernels") }
         motionPipeline = try device.makeComputePipelineState(function: function)
-        warpPipeline = try device.makeComputePipelineState(function: warp)
 
         func texture(_ format: MTLPixelFormat, _ w: Int, _ h: Int, _ usage: MTLTextureUsage,
                      _ storage: MTLStorageMode = .shared) throws -> MTLTexture {
@@ -171,10 +153,7 @@ final class MetalFXScreenPipeline {
         (self.motion, self.depth, self.reactive) = (motion, depth, reactive)
 
         if interpolates {
-            // MetalFX only makes the frame halfway between two successive inputs. At 4x the quarters come from warping the
-            // nearest real frame along the renderer's exact motion: a MetalFX interpolator per quarter cost ~3.8 ms of the
-            // phone's GPU each, more than the game's own rendering in busy scenes; the warp costs a fraction of that, and each
-            // quarter is on screen for one 120 Hz refresh between two MetalFX frames.
+            // MetalFX only makes the frame halfway between two successive inputs, so a 30 fps game shows at 60.
             guard MTLFXFrameInterpolatorDescriptor.supportsDevice(device) else { throw MetalFXError.unsupported("Frame Interpolation") }
             func interpolator(linkedTo scaler: (any MTLFXFrameInterpolatableScaler)?) throws -> MTLFXFrameInterpolator {
                 let f = MTLFXFrameInterpolatorDescriptor()
@@ -187,39 +166,20 @@ final class MetalFXScreenPipeline {
                 return made
             }
             let half = try interpolator(linkedTo: scaler)
-            let outputs = try (0..<frameMultiple - 1).map { _ in
-                try texture(.rgba8Unorm, outWidth, outHeight, half.outputTextureUsage.union(half.colorTextureUsage).union(.shaderWrite), .private)
-            }
+            let mid = try texture(.rgba8Unorm, outWidth, outHeight, half.outputTextureUsage, .private)
             let previousUpscaled = try texture(.rgba8Unorm, outWidth, outHeight, half.colorTextureUsage, .private)
-            (phases, previousOutput) = (outputs, previousUpscaled)
-            let current = output, mid = outputs[outputs.count / 2]
+            (phases, previousOutput) = ([mid], previousUpscaled)
+            let current = output
             encodeInterpolator = { [unowned self] commandBuffer, reset in
-                func run(_ i: MTLFXFrameInterpolator, from prev: MTLTexture, to color: MTLTexture, into out: MTLTexture,
-                         motionScale: Float, interval: Float, reset: Bool) {
-                    i.colorTexture = color; i.prevColorTexture = prev
-                    i.depthTexture = depth; i.motionTexture = motion; i.outputTexture = out
-                    i.motionVectorScaleX = motionScale; i.motionVectorScaleY = motionScale
-                    i.deltaTime = interval
-                    i.nearPlane = 0.1; i.farPlane = 1
-                    i.fieldOfView = 1; i.aspectRatio = Float(width) / Float(height)
-                    i.isDepthReversed = depthReversed
-                    i.shouldResetHistory = reset
-                    i.encode(commandBuffer: commandBuffer)
-                }
-                run(half, from: previousUpscaled, to: current, into: mid, motionScale: 1, interval: 1 / framesPerSecond, reset: reset)
-                guard outputs.count == 3, let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
-                encoder.waitForFence(fence!)
-                encoder.setComputePipelineState(warpPipeline)
-                encoder.setTexture(motion, index: 2)
-                // 1/4 from the previous frame, 3/4 from the current one: (offset of the pixel in the current frame, warp).
-                for (source, shift, out) in [(previousUpscaled, SIMD2<Float>(0.75, 0.25), outputs[0]), (current, SIMD2<Float>(0.25, -0.25), outputs[2])] {
-                    var shift = shift
-                    encoder.setTexture(source, index: 0); encoder.setTexture(out, index: 3)
-                    encoder.setBytes(&shift, length: 8, index: 0)
-                    encoder.dispatchThreads(MTLSize(width: outWidth, height: outHeight, depth: 1), threadsPerThreadgroup: MTLSize(width: 16, height: 16, depth: 1))
-                }
-                encoder.updateFence(fence!)
-                encoder.endEncoding()
+                half.colorTexture = current; half.prevColorTexture = previousUpscaled
+                half.depthTexture = depth; half.motionTexture = motion; half.outputTexture = mid
+                half.motionVectorScaleX = 1; half.motionVectorScaleY = 1
+                half.deltaTime = 1 / framesPerSecond
+                half.nearPlane = 0.1; half.farPlane = 1
+                half.fieldOfView = 1; half.aspectRatio = Float(width) / Float(height)
+                half.isDepthReversed = depthReversed
+                half.shouldResetHistory = reset
+                half.encode(commandBuffer: commandBuffer)
             }
         } else {
             (phases, previousOutput) = ([], nil)

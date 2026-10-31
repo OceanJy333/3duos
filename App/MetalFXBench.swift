@@ -15,7 +15,7 @@ enum MetalFXBench {
                 return device.makeTexture(descriptor: d)!
             }
             let inputs = (texture(.rgba8Unorm), texture(.r32Float), texture(.rg16Float), texture(.r8Unorm))
-            for multiple in [1, 2, 4] {
+            for multiple in [1, 2] {
                 guard let pipeline = try? MetalFXScreenPipeline(device: device, width: w, height: h, outWidth: ow, outHeight: oh,
                                                                 mode: .temporal, frameMultiple: multiple) else { continue }
                 var times: [Double] = []

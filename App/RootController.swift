@@ -19,12 +19,12 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private var shownTop: PICAHighResFrame?, pendingTop: [PICAHighResFrame] = [], topTicks = 0   // top-screen cadence
     private var tick = 0
     private var shownFrame = -1
-    // Default Temporal upscaling + 4x frame interpolation; TDS_EFFECT=<index into effects> overrides it for scripted checks.
+    // Default Temporal upscaling + 2x frame interpolation; TDS_EFFECT=<index into effects> overrides it for scripted checks.
     private var effectIndex = ProcessInfo.processInfo.environment["TDS_EFFECT"].flatMap { Int($0) }
-        ?? UserDefaults.standard.object(forKey: "MetalFXSetting") as? Int ?? 4
+        ?? UserDefaults.standard.object(forKey: "MetalFXEffect") as? Int ?? 3
     private let effectLabel = UILabel()
     private static let effects: [(mode: MetalFXMode, frameMultiple: Int)] = [
-        (.off, 1), (.spatial, 1), (.temporal, 1), (.temporal, 2), (.temporal, 4)]
+        (.off, 1), (.spatial, 1), (.temporal, 1), (.temporal, 2)]
     private var runner: GameRunner?
     private var runningGame: URL?
     private var inLibrary = true   // the menu button pauses a running game here; opening it again resumes it
@@ -131,7 +131,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private func updateEffectsTitle() {
         let setting = Self.effects[effectIndex]
         screens.setEffectsTitle(setting.mode.title + (setting.frameMultiple > 1 ? " + FI \(setting.frameMultiple)x" : ""))
-        UserDefaults.standard.set(effectIndex, forKey: "MetalFXSetting")
+        UserDefaults.standard.set(effectIndex, forKey: "MetalFXEffect")
     }
 
     private func install(_ child: UIView, in parent: UIView) {
@@ -245,9 +245,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
                 link = sceneLink
             } else { link = CADisplayLink(target: self, selector: #selector(step)) }
             link.isPaused = consolePresentation?.isSuspended == true
-            // ProMotion: games ask for 120 Hz (the system may lower it); refreshes without a new image draw nothing. Test scenes: 60 Hz.
-            let hz: Float = runner == nil ? 60 : 120
-            link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: hz, preferred: hz)
+            link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 60, preferred: 60)
             link.add(to: .main, forMode: .common)
             displayLink = link
             _ = presenters.first?.takeStats()
@@ -279,9 +277,9 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             effectLabel.isHidden = state.stop == nil && !Self.showsFrameRate
             let fresh = state.frames != shownFrame   // temporal scalers must see each game frame once
             shownFrame = state.frames
-            // Steady cadence: each top frame holds the same number of refreshes (4 for 30 fps at 120 Hz), so a few milliseconds
+            // Steady cadence: each top frame holds the same number of refreshes (2 for 30 fps at 60 Hz), so a few milliseconds
             // of arrival jitter never turns into 3- and 5-refresh holds. An early frame waits for its turn; a late one extends
-            // the current. Within the hold the presenter steps through the interpolated images and ends on the real one.
+            // the current. Within the hold the presenter shows the interpolated image, then the real one.
             // Up to two frames wait their turn, so one arriving early is shown late rather than skipped; a longer backlog drops the oldest.
             if let frame = state.topHighRes, frame.sequence > (pendingTop.last ?? shownTop)?.sequence ?? -1 { pendingTop = Array((pendingTop + [frame]).suffix(2)) }
             let hold = max(1, Int((Double(hz) / (gameRate.fps > 45 ? 60 : 30)).rounded()))

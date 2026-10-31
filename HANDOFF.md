@@ -79,12 +79,13 @@ Cartridge、Graphics 的独立命令见各自 `Tests/*/README.md` 或测试入�
 - 上屏随后改为 900 × 540（5:3），宽度比原版增加约 16%，面积增加约 21%；生成新皮肤 `New3DSWhiteFaceplateXLBigScreen`，同步收窄上屏边框、外移扬声器孔。坐标仍由 `ConsoleShellGeometry` 统一维护。
 - Duo 模拟器验证过 closed → partial → full 和游戏中 closed → full。核心日志显示 frame 2509 合盖，36 秒后仍从 frame 2509 继续；同一进程恢复后帧数继续增长。最终版 Start 按键已从标题进入存档选择界面。截图和日志在本机 `build/validation/duo-*.png`、`duo-core-fold.log`；构建日志为 `closed-lid-build.log` 与 `closed-lid-ios-build.log`。
 
-## 120 Hz 与性能 · 2026-10-31
+## 插帧与性能 · 2026-10-31
 
-- 默认档：Temporal 超分 + 4 倍插帧。1/2 帧用 MetalFX 插帧，1/4 和 3/4 帧由 `warpQuarter` 沿渲染器的精确运动矢量把相邻两帧各移 1/4 后平均。每次 120 Hz 刷新显示一张，最后一张是真实帧（`MetalScreenPresenter.present(_:slot:of:)`）。MetalFX 插值器没有插值时刻参数，只能生成两帧正中间那一帧。
+- 默认档：Temporal 超分 + 2 倍插帧，显示 60 帧（游戏 30 帧）。显示链固定 60 Hz，每源帧先显示 MetalFX 插出的中点帧，再显示真实帧。
+- 曾做过 120 Hz（4 倍插帧）：MetalFX 插值器没有插值时刻参数，只能生成两帧正中间那一帧；1/4、3/4 帧若再用 MetalFX 生成，GPU 不够，改用沿运动矢量位移又让人物动画产生明显拖影。已删除，见提交 66854e6–dcf4b9a。要做干净的 120，可让游戏本体跑 60 帧再插 2 倍。
 - PICA 顶点着色器由 `PICAMetalVertexCompiler` 翻译成专用 MSL：寄存器改为局部变量，控制流改为结构化代码，后台编译完成前先用解释器。`Tests/VertexCompiler` 在 GPU 上对比两者：游戏内程序和手写控制流程序全部逐位一致。设 `TDS_SHADERDUMP=<目录>` 可导出程序给这个测试用。
 - Metal 后端在命令列表结束时不再提交，等出画面（`send`）、arena 写满或 `finish` 时一起提交。
-- Duo 真机实测（Release，《时之笛 3D》开头演示含下楼梯段，连续 4 分半）：显示平均 118.6 帧/秒，核心 30 帧，发热等级一直是 1（fair）。改为合并提交后又跑一轮：平均 119.1 帧，核心线程空闲 52%。少数低于 110 的秒是核心自身掉到 20–27 帧（加载时）。
-- MetalFX 在 Duo 上单独计时（`TDS_BENCH=1`，1200×720→1718×1031，每源帧）：只超分 1.3 ms，2 倍 4.8–5.6 ms；4 倍用 MetalFX 生成全部插值帧时 12.3 ms，改为 warp 后 5.6 ms。原来下楼梯时掉到 60 帧，原因是 GPU 被 MetalFX 和渲染一起占满。
+- 4 倍时期的 Duo 真机实测（Release，开头演示含下楼梯段，连续 4 分半）：显示平均 119.1 帧，核心 30 帧，发热等级 1。少数掉帧的秒是核心自身在加载时掉到 20–27 帧。
+- MetalFX 在 Duo 上单独计时（`TDS_BENCH=1`，1200×720→1718×1031，每源帧）：只超分 1.3 ms，2 倍 4.8–5.6 ms。
 - 诊断开关：`TDS_HUD=1` 在画面上叠加帧率并每秒写一行日志，`TDS_EFFECT=<档位>`、`TDS_OPEN=1` 用于脚本实测。日志 `3duos passes/s` 按原因列出每秒 render pass 和同步次数。
 - 剩余热点：ARM11 解释器约占核心线程 40%（JIT 是下一阶段）；每帧 2 次 UI 层合并和 2–3 个顶屏 pass，每次都要把五张附件整张读回、写出；`lcdFrame` 每帧新建 5 张纹理。

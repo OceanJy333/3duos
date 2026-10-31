@@ -154,7 +154,7 @@ func jitterScore(sign: Float) throws -> Double {
 }
 
 var passed = true
-for (mode, multiple) in [(MetalFXMode.spatial, 1), (.temporal, 1), (.temporal, 2), (.temporal, 4)] {
+for (mode, multiple) in [(MetalFXMode.spatial, 1), (.temporal, 1), (.temporal, 2)] {
     passed = try run(mode, frameMultiple: multiple) && passed
 }
 let same = try jitterScore(sign: 1), opposite = try jitterScore(sign: -1)
