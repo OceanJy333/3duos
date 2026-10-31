@@ -1,8 +1,18 @@
-# 机壳生成素材 · 2026-10-30
+# 机壳生成素材 · 2026-10-31
 
 使用内置 image_gen，参考项目现有白色 XL 皮肤生成。外盖横向、去掉双摄；内外素材均补齐机壳外侧黑底，形成矩形满版纹理。
 
-当前上屏使用加大开口的 XL 内壳，渲染区域为 900 × 540，以 5:3 显示游戏。
+当前使用全白 XL 内壳，上屏渲染区域保持 900 × 540，以 5:3 显示游戏。上半面板、转轴、空屏均为白色；ABXY 改为蓝绿红黄。触控坐标沿用现有布局。
+
+## 全白版本与图标
+
+使用内置 image_gen。用户参考、完整提示词保存在 `Design/WhiteEdition/new-3ds-user-reference.png` 与 `Design/WhiteEdition/generation.json`。
+
+- 当前内壳：`App/Assets.xcassets/New3DSWhiteFaceplateXLAllWhite.imageset/new3ds-white-xl-all-white.png`。
+- 当前应用图标：`App/Assets.xcassets/AppIcon.appiconset/3duos-icon.png`，1024 × 1024；纯白底，深灰色「3」与「DUOS」两行粗体字。
+- 图标原始生成图：`Design/WhiteEdition/3duos-icon-type-master.png`；提示词见 `Design/WhiteEdition/typographic-icon-generation.json`。
+- 机身上屏与下屏开孔、摇杆底座、按键位置保持不变；摇杆帽与按下反馈仍由应用实时显示。
+- 顶部二次打磨：显示区保持 (75, 96, 900, 540)，缩小摄像头、移除大圆盖与侧滑块、扬声器移到上屏下缘。外盖降低金属反光，使用「3 / DUOS」压印；两张图的完整提示词见 `Design/WhiteEdition/balanced-shell-generation.json`。
 
 ## 加大上屏提示词
 
@@ -12,7 +22,8 @@ Use case: precise-object-edit. Edit target: the supplied white open New 3DS XL e
 | --- | --- | --- |
 | 合盖外壳 | `App/Assets.xcassets/New3DSWhiteClosedLid.imageset/new3ds-white-closed-lid.png` | 1512 × 1040 |
 | 展开内壳 | `App/Assets.xcassets/New3DSWhiteFaceplateXLFullBleed.imageset/new3ds-white-xl-full-bleed.png` | 1051 × 1496 |
-| 大上屏内壳（当前使用） | `App/Assets.xcassets/New3DSWhiteFaceplateXLBigScreen.imageset/new3ds-white-xl-big-screen.png` | 1052 × 1495 |
+| 大上屏内壳（旧版） | `App/Assets.xcassets/New3DSWhiteFaceplateXLBigScreen.imageset/new3ds-white-xl-big-screen.png` | 1052 × 1495 |
+| 全白内壳（当前使用） | `App/Assets.xcassets/New3DSWhiteFaceplateXLAllWhite.imageset/new3ds-white-xl-all-white.png` | 1052 × 1495 |
 
 ## 外盖生成提示
 

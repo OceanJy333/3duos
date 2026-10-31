@@ -33,8 +33,8 @@ final class LibraryScreens {
     private let mint = UIColor(red: 0.32, green: 0.70, blue: 0.62, alpha: 1)
 
     init() {
-        top.backgroundColor = UIColor(red: 0.92, green: 0.95, blue: 0.94, alpha: 1)
-        bottom.backgroundColor = UIColor(red: 0.91, green: 0.94, blue: 0.93, alpha: 1)
+        top.backgroundColor = .white
+        bottom.backgroundColor = .white
         top.clipsToBounds = true
         bottom.clipsToBounds = true
 

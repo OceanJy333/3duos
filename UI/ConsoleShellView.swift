@@ -40,7 +40,7 @@ final class ConsoleShellView: UIView {
     var onMenu: (() -> Void)?
     var menuFrame: CGRect { geometry?.menu ?? bounds }
     private var geometry: ConsoleShellGeometry?
-    private let shellImage = UIImageView(image: UIImage(named: "New3DSWhiteFaceplateXLBigScreen"))
+    private let shellImage = UIImageView(image: UIImage(named: "New3DSWhiteFaceplateXLAllWhite"))
     private let stick = ConsoleCirclePad()
     private let cStick = ConsoleCirclePad()
     private var buttons: [UIButton] = []
@@ -48,7 +48,7 @@ final class ConsoleShellView: UIView {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = UIColor(white: 0.94, alpha: 1)
+        backgroundColor = .white
         clipsToBounds = true
         isMultipleTouchEnabled = true
         shellImage.contentMode = .scaleToFill
