@@ -16,6 +16,9 @@ struct ConsoleShellGeometry {
     var topScreen: CGRect { imageRect(75, 96, 900, 540) }
     var bottomScreen: CGRect { imageRect(215, 828, 620, 504) }
     var circlePad: CGRect { imageRect(28, 890, 162, 164) }
+    // The pad reads movement from where the thumb lands, so its touch area reaches into the free faceplate above and to
+    // the right: the thumb can rest away from the phone's edge and still push fully left.
+    var circlePadTouch: CGRect { imageRect(28, 815, 186, 270) }
     var cStick: CGRect { imageRect(878, 856, 74, 74) }
     var dpad: [CGRect] { [imageRect(83, 1088, 50, 50), imageRect(40, 1137, 47, 48),
                             imageRect(130, 1137, 47, 48), imageRect(83, 1183, 50, 50)] }
@@ -112,6 +115,9 @@ final class ConsoleShellView: UIView {
         topScreen.frame = next.topScreen
         bottomScreen.frame = next.bottomScreen
         stick.frame = next.circlePad
+        let touch = next.circlePadTouch
+        stick.touchInsets = UIEdgeInsets(top: touch.minY - next.circlePad.minY, left: touch.minX - next.circlePad.minX,
+                                         bottom: next.circlePad.maxY - touch.maxY, right: next.circlePad.maxX - touch.maxX)
         cStick.frame = next.cStick
         let frames = next.dpad + next.faceButtons + next.shoulders + [next.select, next.start]
         for (button, frame) in zip(buttons, frames) { button.frame = frame }

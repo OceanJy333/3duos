@@ -66,6 +66,7 @@ final class GameRunner {
 
     func setSuspended(_ suspended: Bool) {
         lock.lock()
+        if self.suspended && !suspended { kernel.setClock() }   // the core thread is parked until this lock is released
         self.suspended = suspended
         NSLog("3duos core: %@ at frame %d", suspended ? "pause" : "resume", latest.frames)
         lock.broadcast()

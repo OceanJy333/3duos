@@ -38,6 +38,7 @@ enum ProcessLoader {
         }
         kernel.committedBytes = UInt32(program.text.bytes.count + program.ro.bytes.count + program.data.bytes.count) + bss + stack
         try writeConfiguration(memory)
+        kernel.setClock()
         guard kernel.addThread(priority: 0x30, entry: program.text.address, argument: 0, stackTop: stackTop) != nil else {
             throw ProcessError.mapping("main thread")
         }

@@ -24,6 +24,8 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private static let effects: [(mode: MetalFXMode, interpolates: Bool)] = [
         (.off, false), (.spatial, false), (.temporal, false), (.temporal, true)]
     private var runner: GameRunner?
+    private var runningGame: URL?
+    private var inLibrary = true   // the menu button pauses a running game here; opening it again resumes it
     private var consolePresentation: ConsolePresentation?
     private let stage = UIView()   // everything on screen; kept portrait to the device whatever the scene orientation
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
@@ -92,8 +94,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         stage.addSubview(shell)
         consolePresentation = ConsolePresentation(in: stage, shell: shell) { [weak self] suspended in
             self?.displayLink?.isPaused = suspended
-            self?.runner?.setSuspended(suspended)
-            if suspended { self?.runner?.releaseInput() }
+            self?.updateRunnerPause()
         }
         install(screens.top, in: shell.topScreen)
         install(screens.bottom, in: shell.bottomScreen)
@@ -101,7 +102,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         shell.bottomScreen.isPaused = true
         screens.onSelect = { [weak self] url in self?.selected = url; self?.updateLibrary() }
         screens.onOpen = { [weak self] in self?.openSelected() }
-        screens.onTest = { [weak self] in self?.showTestFrames() }
+        screens.onTest = { [weak self] in self?.runner?.cancel(); self?.runner = nil; self?.runningGame = nil; self?.showTestFrames() }
         screens.onEffects = { [weak self] in
             guard let self else { return }
             self.effectIndex = (self.effectIndex + 1) % Self.effects.count
@@ -145,42 +146,13 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         do {
             games = try library.games()
             if selected == nil || !games.contains(selected!) { selected = games.first }
-            metadata = [:]
-            for url in games {
-                do {
-                    let cartridge = try CartridgeReader.read(url: url)
-                    let titles = cartridge.icon?.titles ?? []
-                    let title = (titles.count > 11 && !titles[11].short.isEmpty ? titles[11].short :
-                                 titles.count > 1 && !titles[1].short.isEmpty ? titles[1].short :
-                                 titles.first(where: { !$0.short.isEmpty })?.short) ?? ""
-                    metadata[url] = LibraryGameInfo(title: title, icon: cartridge.icon.flatMap { Self.icon($0.pixels) },
-                                                    detail: cartridge.productCode)
-                } catch {
-                    metadata[url] = LibraryGameInfo(title: "", icon: nil, detail: error.localizedDescription)
-                }
-            }
+            metadata = Dictionary(uniqueKeysWithValues: games.map { ($0, library.info($0)) })
             updateLibrary()
         } catch { showError(error) }
     }
 
     private func updateLibrary() {
         screens.update(games: games, selected: selected, metadata: metadata)
-    }
-
-    private static func icon(_ pixels: [UInt16]) -> UIImage? {
-        var rgba = [UInt8]()
-        rgba.reserveCapacity(pixels.count * 4)
-        for pixel in pixels {
-            let r = UInt8((pixel >> 11) & 31), g = UInt8((pixel >> 5) & 63), b = UInt8(pixel & 31)
-            rgba.append(contentsOf: [(r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2), 255])
-        }
-        guard let provider = CGDataProvider(data: Data(rgba) as CFData),
-              let image = CGImage(width: 48, height: 48, bitsPerComponent: 8, bitsPerPixel: 32,
-                                  bytesPerRow: 48 * 4, space: CGColorSpaceCreateDeviceRGB(),
-                                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.noneSkipLast.rawValue),
-                                  provider: provider, decode: nil, shouldInterpolate: false,
-                                  intent: .defaultIntent) else { return nil }
-        return UIImage(cgImage: image).withRenderingMode(.alwaysOriginal)
     }
 
     private func openPicker() {
@@ -199,8 +171,18 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         refresh()
     }
 
+    private func updateRunnerPause() {
+        let paused = inLibrary || consolePresentation?.isSuspended == true
+        runner?.setSuspended(paused)
+        if paused { runner?.releaseInput() }
+    }
+
     private func openSelected() {
         guard let url = selected else { return }
+        inLibrary = false
+        if runner != nil, runningGame == url { updateRunnerPause(); showTestFrames(); return }
+        runner?.cancel()
+        runner = nil
         do {
             let cartridge = try CartridgeReader.read(url: url)
             let program = try CartridgeProgramLoader.load(cartridge, from: url)
@@ -208,16 +190,19 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
                 .appendingPathComponent("saves").appendingPathComponent(url.deletingPathExtension().lastPathComponent)
             let kernel = try ProcessLoader.boot(program, source: CartridgeSource(url: url, cartridge: cartridge), saveRoot: saves)
             runner = GameRunner(kernel: kernel)
+            runningGame = url
             let mode = Self.effects[effectIndex].mode
             runner?.setInternalScale(internalScale(for: mode))
             runner?.setTextureFiltering(true)
             runner?.setTexturePack(programID: cartridge.programID)
             runner?.setMetalFXInputs(mode == .temporal && MTLCreateSystemDefaultDevice().map(MetalFXScreenPipeline.supportsTemporal) == true)
-            runner?.setSuspended(consolePresentation?.isSuspended == true)
+            updateRunnerPause()
             runner?.start()
-            shell.onButton = { [weak self] id, pressed in self?.runner?.button(id, pressed: pressed) }
-            shell.onStick = { [weak self] id, position in if id == .circlePad { self?.runner?.stick(position) } }
-            shell.onScreenTouch = { [weak self] point, phase in self?.runner?.touch(phase == .ended || phase == .cancelled ? nil : point) }
+            shell.onButton = { [weak self] id, pressed in if self?.inLibrary == false { self?.runner?.button(id, pressed: pressed) } }
+            shell.onStick = { [weak self] id, position in if id == .circlePad, self?.inLibrary == false { self?.runner?.stick(position) } }
+            shell.onScreenTouch = { [weak self] point, phase in
+                if self?.inLibrary == false { self?.runner?.touch(phase == .ended || phase == .cancelled ? nil : point) }
+            }
             showTestFrames()
         } catch {
             showError(error)
@@ -246,8 +231,8 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             screens.top.isHidden = true
             screens.bottom.isHidden = true
             shell.layoutIfNeeded()
-            effectLabel.text = runner == nil ? "MetalFX \(setting.mode.title)\(setting.interpolates ? " + Frame Interpolation" : "")" : "Starting game…"
-            effectLabel.isHidden = false
+            effectLabel.text = "MetalFX \(setting.mode.title)\(setting.interpolates ? " + Frame Interpolation" : "")"
+            effectLabel.isHidden = runner != nil   // games show no overlay; the status still goes to the device log
             tick = 0
             displayLink?.invalidate()
             let link: CADisplayLink
@@ -282,6 +267,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             let hz = Int((1 / (link.targetTimestamp - link.timestamp)).rounded())
             effectLabel.text = state.stop.map { "Stopped: \($0)" }
                 ?? "\(Int(gameRate.fps.rounded())) fps · \(hz) Hz · \(Int(state.speed * 100))%\(output)"
+            effectLabel.isHidden = state.stop == nil
             let fresh = state.frames != shownFrame   // temporal scalers must see each game frame once
             shownFrame = state.frames
             // Steady cadence: each top frame holds the same number of refreshes (4 for 30 fps at 120 Hz), so a few milliseconds
@@ -319,8 +305,8 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     }
 
     private func showLibrary() {
-        runner?.cancel()
-        runner = nil
+        inLibrary = true
+        updateRunnerPause()
         displayLink?.invalidate()
         displayLink = nil
         effectLabel.isHidden = true

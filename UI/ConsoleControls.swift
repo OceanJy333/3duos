@@ -61,6 +61,8 @@ final class ConsoleCirclePad: UIView {
     }
 
     private var knobSize: CGFloat = 0.7
+    var touchInsets = UIEdgeInsets.zero   // negative: the touch area extends past the drawn pad
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool { bounds.inset(by: touchInsets).contains(point) }
     override func layoutSubviews() {
         super.layoutSubviews()
         let size = CGSize(width: bounds.width * knobSize, height: bounds.height * knobSize)

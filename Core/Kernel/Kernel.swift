@@ -87,6 +87,19 @@ final class Kernel {
 
     func nanosecondsToTicks(_ ns: UInt64) -> UInt64 { UInt64(Double(ns) * Self.ticksPerNanosecond) }
 
+    // Shared page clock (both DateTime slots at 0x1FF81020/40): local wall time in ms since 1900, anchored to the current
+    // tick. Games add the ticks elapsed since; call again after a pause, since paused wall time is not emulated.
+    func setClock(_ now: Date = Date()) {
+        let seconds = now.timeIntervalSince1970 + Double(TimeZone.current.secondsFromGMT(for: now)) + 2_208_988_800
+        let fields = [UInt64(seconds * 1000), ticks, UInt64(Self.ticksPerNanosecond * 1e9), 0]
+        for base: UInt32 in [0x1FF8_1020, 0x1FF8_1040] {
+            for (i, value) in fields.enumerated() {
+                try? memory.poke32(base + UInt32(i * 8), UInt32(truncatingIfNeeded: value))
+                try? memory.poke32(base + UInt32(i * 8 + 4), UInt32(truncatingIfNeeded: value >> 32))
+            }
+        }
+    }
+
     func addThread(priority: UInt32, entry: UInt32, argument: UInt32, stackTop: UInt32) -> KThread? {
         let id = nextThreadID
         let tls = 0x1FF8_2000 + (id - 1) * 0x200

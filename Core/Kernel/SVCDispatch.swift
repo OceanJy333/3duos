@@ -39,7 +39,7 @@ extension Kernel {
         case 0x24: waitSynchronization1(thread)
         case 0x25: waitSynchronizationN(thread)
         case 0x27: duplicateHandle(cpu)
-        case 0x28: cpu.registers[0] = 0; cpu.registers[1] = UInt32(truncatingIfNeeded: ticks); cpu.registers[2] = UInt32(truncatingIfNeeded: ticks >> 32)
+        case 0x28: cpu.registers[0] = UInt32(truncatingIfNeeded: ticks); cpu.registers[1] = UInt32(truncatingIfNeeded: ticks >> 32)   // s64 in r0:r1, no result code
         case 0x2D: connectToPort(cpu)
         case 0x32: sendSyncRequest(thread)
         case 0x35, 0x36: cpu.registers[0] = 0; cpu.registers[1] = 0x1D
