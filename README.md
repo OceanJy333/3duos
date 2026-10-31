@@ -1,10 +1,20 @@
-# 3duos Lab
+# 3duos
 
-独立开发中的 3DS 模拟器。Git 仓库没有远端；应用只链接 Apple 系统框架。旧版 3duos 仅供运行效果对照，不参与本工程的编译或链接。
+为 iPhone Duo 折叠屏写的 3DS 模拟器。内核从零自写，渲染直接走 Apple Metal（不经 Vulkan / MoltenVK），并把深度、运动矢量和抖动交给 MetalFX 做超分和插帧。合上时外屏显示 3DS 外盖，打开后上下两块屏对应 3DS 双屏。
 
-当前可导入解密的 NCCH/CXI 或 NCSD/CCI，读取标题、图标和程序段。自写的 ARM11 A32 解释器已经执行《时之笛 3D》的真实入口，但尚未进入游戏画面。应用内的 `Test screens` 运行自造 A32 程序，写入一列帧缓冲像素，再交给 Metal 显示；背景与文字由 UIKit 绘制。独立图形测试能把合成 PICA 命令和顶点送入固定 Metal 着色器画三角形，这些还未接入游戏帧。`Test screens` 里由 A32 程序画一个移动方块，可在 MetalFX 的 Off / Spatial / Temporal / Temporal+FI / Denoised / Denoised+FI 之间切换，双屏实际超分到 3 倍并在 30→60 fps 插帧。
+A 3DS emulator for the foldable iPhone Duo, with a self-written core, native Metal rendering and MetalFX upscaling / frame interpolation fed with real depth and motion vectors.
 
-游戏文件留在本机原路径，不放进仓库。当前验证结果和接手步骤见 [HANDOFF.md](HANDOFF.md)；数据流见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+## 现状
+
+- 《塞尔达传说 时之笛 3D》可在 iPhone Duo 真机上稳定 30 fps 游玩；MetalFX Temporal 超分（内部 800×480 → 1207×724）加 2 倍插帧。
+- 已运行过：iPhone Duo 真机、Duo 模拟器、Mac Catalyst。其他游戏尚未测试。
+- 应用只链接 Apple 系统框架，不含第三方模拟器或渲染库。
+
+## 不包含
+
+仓库不提供任何游戏、系统固件或密钥。请只使用你自己合法导出的已解密游戏文件（NCCH/CXI 或 NCSD/CCI）。
+
+## 构建
 
 需要 Xcode 27.2 和 xcodegen：
 
@@ -13,6 +23,8 @@ xcodegen generate
 xcodebuild -project 3duos.xcodeproj -scheme 3duos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO build
 ```
 
-App ID 为 `xyz.ocean33.3duos.lab`。应用依赖 Apple 系统框架，不包含第三方模拟器或渲染库。
+真机安装需在 `project.yml` 填自己的签名团队与 Bundle ID。结构见 [ARCHITECTURE.md](ARCHITECTURE.md)，开发记录见 [HANDOFF.md](HANDOFF.md)；独立测试见 `Tests/*/README.md`。
 
-独立核心测试的命令见 `Tests/Boot/README.md`、`Tests/Graphics/README.md`、`Tests/MetalFX/README.md`；其余 CPU、Cartridge、GPU 测试可以分别和对应 `Core` 目录用 `swiftc` 编译。
+## 许可
+
+MIT，见 [LICENSE](LICENSE)。Nintendo 3DS 与《塞尔达传说》是任天堂的商标，本项目与任天堂无关。
