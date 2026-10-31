@@ -1,6 +1,6 @@
 # 3duos 自研模拟器交接
 
-更新：2026-10-30（《时之笛 3D》在自研核心里已渲染出真实画面：标题、过场、战斗场景；PICA 软件渲染器、HID、DSP 通路已接上；MetalFX 的深度、运动矢量、抖动输入已由渲染器提供）。工程位于 `/Users/ocean/code/3duos`，是没有远端的独立 Git 仓库。用户明确要求模拟器也自己开发：允许下载或阅读其他仓库以研究行为，不 fork、不引入第三方模拟器运行库，也不复制其实现。本工程应用只链接 Apple 系统框架。旧工程 `/Users/ocean/code/folium-duo-3ds` 中可玩的 3duos 仅用于效果对照；它运行 Cytrus，与这里的自研核心没有链接关系。
+更新：2026-10-30（《时之笛 3D》在自研核心里已渲染出真实画面：标题、过场、战斗场景；PICA 软件渲染器、HID、DSP 通路已接上；MetalFX 的深度、运动矢量、抖动输入已由渲染器提供）。工程位于 `/Users/ocean/code/3duos`，是有远端的独立 Git 仓库。用户明确要求模拟器也自己开发：允许下载或阅读其他仓库以研究行为，不 fork、不引入第三方模拟器运行库，也不复制其实现。本工程应用只链接 Apple 系统框架。旧工程 `/Users/ocean/代码资料归档/folium-duo-3ds` 中可玩的 3duos 仅用于效果对照；它运行 Cytrus，与这里的自研核心没有链接关系。
 
 ## 当前结果
 
@@ -16,7 +16,7 @@
 
 ## 《时之笛 3D》启动记录
 
-本机测试文件：`/Users/ocean/code/folium-duo-3ds/build/zelda-inspection/zelda-oot-decrypted.cxi`（本机资产，不在仓库）。Title ID `000400000008F900`。
+曾用本机测试文件：`/Users/ocean/代码资料归档/folium-duo-3ds/build/zelda-inspection/zelda-oot-decrypted.cxi`（目前不存在，不在仓库）。Title ID `000400000008F900`。
 
 自研核心现在能跑到标题画面、Hyrule 场景和战斗场景，上屏出真实 3D 画面，下屏出“按START鍵”触屏界面（繁体中文，来自 cfg 地区设置）。最后卡住游戏的几处根因，都已修在仓库里：线性堆基址（原 `0x30000000`，应为 `0x14000000`）；`cfg:u` 立体相机参数块 `0x00050005`；`hid:USER` 命令 `0x16` 的陀螺仪校准值；DSP 音频管道每帧中断；GSP 命令槽偏移与显示传输缩放尺寸。
 
@@ -44,7 +44,7 @@ xcodebuild -project 3duos.xcodeproj -scheme 3duos -configuration Debug -sdk ipho
 xcrun swiftc Core/CPU/*.swift Tests/CPU/main.swift -o /tmp/3duos-cpu-check
 /tmp/3duos-cpu-check
 xcrun swiftc -O Core/CPU/*.swift Core/GPU/GPUState.swift Core/GPU/GPUTransfer.swift Core/GPU/P*.swift Core/Graphics/FramebufferDecoder.swift Core/Memory/*.swift Core/Kernel/*.swift Core/Services/*.swift Core/Cartridge/*.swift Core/Boot/*.swift Tests/Boot/main.swift -o /tmp/3duos-boot-probe
-/tmp/3duos-boot-probe /Users/ocean/code/folium-duo-3ds/build/zelda-inspection/zelda-oot-decrypted.cxi 200000000 --shot=/tmp
+/tmp/3duos-boot-probe /Users/ocean/代码资料归档/folium-duo-3ds/build/zelda-inspection/zelda-oot-decrypted.cxi 200000000 --shot=/tmp
 xcrun swiftc -O Core/CPU/*.swift Core/Memory/*.swift Core/Kernel/*.swift Core/Services/IPC.swift Core/GPU/*.swift Core/Graphics/FramebufferDecoder.swift Tests/GPU/*.swift -o /tmp/3duos-gpu-check
 MTL_DEBUG_LAYER=1 /tmp/3duos-gpu-check
 xcrun swiftc Core/Graphics/MetalFXScreenPipeline.swift Tests/MetalFX/main.swift -o /tmp/3duos-metalfx-check
