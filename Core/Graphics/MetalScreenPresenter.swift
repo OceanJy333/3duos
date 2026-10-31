@@ -1,6 +1,6 @@
 // Input: decoded LCD frames or GPU frames at the internal resolution, a MetalFX mode, and an externally sized CAMetalLayer.
 // Output: frames submitted to that layer at its native pixel size: drawn as is, or MetalFX reconstructed and interpolated,
-//         with the game's UI layer composited on top.
+//         with the game's UI layer composited on top; counts of frames that reached the screen and MetalFX GPU time.
 // Pos: Metal display endpoint, independent of the emulation and UI layers.
 import Foundation
 import Metal
@@ -22,8 +22,10 @@ final class MetalScreenPresenter {
     private let nearest: MTLSamplerState
     private let linear: MTLSamplerState
     private var effects: MetalFXScreenPipeline?
-    private var mode = MetalFXMode.off, wantsInterpolation = false
-    private var shownSequence = -1, owesRealFrame = false
+    private var mode = MetalFXMode.off, wantsFrameMultiple = 1
+    private var encodedSequence = -1, shownImage = -1
+    private let statsLock = NSLock()
+    private var stats = (shown: 0, gpuSeconds: 0.0, encodes: 0)
 
     init(layer: CAMetalLayer) throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw MetalPresenterError.deviceUnavailable }
@@ -74,13 +76,21 @@ final class MetalScreenPresenter {
         self.linear = linear
     }
 
-    func configureMetalFX(mode: MetalFXMode, interpolates: Bool) {
+    func configureMetalFX(mode: MetalFXMode, frameMultiple: Int) {
         self.mode = mode
-        wantsInterpolation = interpolates
+        wantsFrameMultiple = frameMultiple
         effects = nil
     }
 
-    var interpolates: Bool { effects?.interpolated != nil }
+    var frameMultiple: Int { (effects?.phases.count ?? 0) + 1 }
+
+    // Frames that reached the screen and mean MetalFX GPU time per source frame since the last call.
+    func takeStats() -> (shown: Int, gpuMilliseconds: Double) {
+        statsLock.lock(); defer { statsLock.unlock() }
+        let taken = (stats.shown, stats.encodes > 0 ? stats.gpuSeconds * 1000 / Double(stats.encodes) : 0)
+        stats = (0, 0, 0)
+        return taken
+    }
     var scaling: String? { effects.map { "\($0.width)×\($0.height)→\($0.output.width)×\($0.output.height)" } }
 
     // MetalFX writes straight into the display's pixel grid: the drawable size fitted to the input aspect, at most 3x
@@ -93,7 +103,7 @@ final class MetalScreenPresenter {
         if let effects, effects.width == width, effects.height == height, effects.output.width == out.0, effects.output.height == out.1 { return effects }
         do {
             effects = try MetalFXScreenPipeline(device: device, width: width, height: height, outWidth: out.0, outHeight: out.1,
-                                                mode: mode, interpolates: wantsInterpolation)
+                                                mode: mode, frameMultiple: wantsFrameMultiple)
         } catch {
             NSLog("3duos MetalFX %@ unavailable: %@", mode.title, "\(error)")
             mode = .off
@@ -102,8 +112,8 @@ final class MetalScreenPresenter {
         return effects
     }
 
-    // Shows the new source frame. With interpolation this is the frame halfway to the previous one;
-    // call `presentUpscaled()` half a source interval later to show the frame itself.
+    // Encodes a new source frame and shows the first of its images; `presentEncoded(slot: 1, of: 2)` half a source interval
+    // later shows the frame itself.
     @discardableResult
     func present(_ frame: DecodedScreenFrame) -> Bool {
         let width = frame.screen.width
@@ -112,8 +122,9 @@ final class MetalScreenPresenter {
         if let effects = effects(width: width, height: 240) {
             effects.jitter = frame.jitter
             frame.rgba.withUnsafeBytes { effects.upload(rgba: $0.baseAddress!, depth: frame.depth, motion: frame.motion) }
-            effects.encode(commandBuffer: command)
-            return draw(effects.interpolated ?? effects.output, fence: effects.fence, sampler: linear, command: command)
+            encode(effects, into: command)
+            shownImage = -1
+            return presentEncoded(slot: 0, of: 2)
         }
         let textureDescriptor = MTLTextureDescriptor.texture2DDescriptor(
             pixelFormat: .rgba8Unorm, width: width, height: 240, mipmapped: false)
@@ -126,33 +137,47 @@ final class MetalScreenPresenter {
         return draw(texture, fence: nil, sampler: nearest, command: command)
     }
 
-    // Called every display refresh with the latest GPU frame. A new game frame goes through MetalFX with the renderer's exact
-    // jitter, depth, motion and reactive mask; with interpolation the next refresh, without a new frame, shows the real one.
+    // Called every display refresh with the frame on screen and the refresh's place in its hold (`slot` of `slots`). A new
+    // game frame goes through MetalFX once with the renderer's exact jitter, depth, motion and reactive mask; each refresh
+    // then shows the interpolated image nearest its time, ending on the frame itself. Nothing is drawn when that image
+    // is already on screen.
     @discardableResult
-    func present(_ frame: PICAHighResFrame) -> Bool {
-        guard frame.sequence != shownSequence else {
-            guard owesRealFrame else { return false }
-            owesRealFrame = false
-            return presentUpscaled()
+    func present(_ frame: PICAHighResFrame, slot: Int, of slots: Int) -> Bool {
+        if frame.sequence != encodedSequence {
+            encodedSequence = frame.sequence
+            shownImage = -1
+            uiLayer = frame.layer
+            guard let effects = effects(width: frame.color.width, height: frame.color.height) else {
+                guard let command = queue.makeCommandBuffer() else { return false }
+                return draw(frame.color, fence: nil, sampler: linear, command: command)
+            }
+            guard let command = queue.makeCommandBuffer() else { return false }
+            effects.jitter = frame.jitter * Float(frame.scale)
+            effects.depthReversed = frame.depthReversed
+            effects.upload(color: frame.color, depth: frame.depth, motion: frame.motion, reactive: frame.reactive, commandBuffer: command)
+            encode(effects, into: command)
         }
-        shownSequence = frame.sequence
-        uiLayer = frame.layer
-        guard let command = queue.makeCommandBuffer() else { return false }
-        guard let effects = effects(width: frame.color.width, height: frame.color.height) else {
-            return draw(frame.color, fence: nil, sampler: linear, command: command)
-        }
-        effects.jitter = frame.jitter * Float(frame.scale)
-        effects.depthReversed = frame.depthReversed
-        effects.upload(color: frame.color, depth: frame.depth, motion: frame.motion, reactive: frame.reactive, commandBuffer: command)
-        effects.encode(commandBuffer: command)
-        owesRealFrame = effects.interpolated != nil
-        return draw(effects.interpolated ?? effects.output, fence: effects.fence, sampler: linear, command: command)
+        return presentEncoded(slot: slot, of: slots)
     }
 
+    // Of the frame's images (interpolated ones, then the frame), shows the one whose time is the end of this slot.
     @discardableResult
-    func presentUpscaled() -> Bool {
-        guard let effects, let command = queue.makeCommandBuffer() else { return false }
-        return draw(effects.output, fence: effects.fence, sampler: linear, command: command)
+    func presentEncoded(slot: Int, of slots: Int) -> Bool {
+        guard let effects else { return false }
+        let images = effects.phases + [effects.output]
+        let index = ((slot + 1) * images.count + slots - 1) / slots - 1
+        guard index != shownImage, let command = queue.makeCommandBuffer() else { return false }
+        shownImage = index
+        return draw(images[index], fence: effects.fence, sampler: linear, command: command)
+    }
+
+    private func encode(_ effects: MetalFXScreenPipeline, into command: MTLCommandBuffer) {
+        effects.encode(commandBuffer: command)
+        command.addCompletedHandler { [weak self] done in
+            guard let self else { return }
+            statsLock.lock(); stats.gpuSeconds += done.gpuEndTime - done.gpuStartTime; stats.encodes += 1; statsLock.unlock()
+        }
+        command.commit()
     }
 
     private func draw(_ texture: MTLTexture, fence: MTLFence?, sampler: MTLSamplerState,
@@ -176,6 +201,14 @@ final class MetalScreenPresenter {
             encoder.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3)
         }
         encoder.endEncoding()
+        #if targetEnvironment(simulator)   // its SDK has no presented handler: count submissions
+        statsLock.lock(); stats.shown += 1; statsLock.unlock()
+        #else
+        drawable.addPresentedHandler { [weak self] shown in
+            guard let self, shown.presentedTime > 0 else { return }
+            statsLock.lock(); stats.shown += 1; statsLock.unlock()
+        }
+        #endif
         command.present(drawable)
         command.commit()
         return true

@@ -15,14 +15,16 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private var presenters: [MetalScreenPresenter] = []
     private var scenes: [TestScene] = []
     private var displayLink: CADisplayLink?
-    private var gameRate = (time: 0.0, frames: 0, fps: 30.0)
+    private var gameRate = (time: 0.0, frames: 0, fps: 30.0, shown: 0.0, gpuMilliseconds: 0.0)   // shown: top-screen images per second
     private var shownTop: PICAHighResFrame?, pendingTop: [PICAHighResFrame] = [], topTicks = 0   // top-screen cadence
     private var tick = 0
     private var shownFrame = -1
-    private var effectIndex = UserDefaults.standard.object(forKey: "MetalFXEffect") as? Int ?? 3   // Temporal upscaling + 2x frame interpolation
+    // Default Temporal upscaling + 4x frame interpolation; TDS_EFFECT=<index into effects> overrides it for scripted checks.
+    private var effectIndex = ProcessInfo.processInfo.environment["TDS_EFFECT"].flatMap { Int($0) }
+        ?? UserDefaults.standard.object(forKey: "MetalFXSetting") as? Int ?? 4
     private let effectLabel = UILabel()
-    private static let effects: [(mode: MetalFXMode, interpolates: Bool)] = [
-        (.off, false), (.spatial, false), (.temporal, false), (.temporal, true)]
+    private static let effects: [(mode: MetalFXMode, frameMultiple: Int)] = [
+        (.off, 1), (.spatial, 1), (.temporal, 1), (.temporal, 2), (.temporal, 4)]
     private var runner: GameRunner?
     private var runningGame: URL?
     private var inLibrary = true   // the menu button pauses a running game here; opening it again resumes it
@@ -127,8 +129,8 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
 
     private func updateEffectsTitle() {
         let setting = Self.effects[effectIndex]
-        screens.setEffectsTitle(setting.mode.title + (setting.interpolates ? " + FI" : ""))
-        UserDefaults.standard.set(effectIndex, forKey: "MetalFXEffect")
+        screens.setEffectsTitle(setting.mode.title + (setting.frameMultiple > 1 ? " + FI \(setting.frameMultiple)x" : ""))
+        UserDefaults.standard.set(effectIndex, forKey: "MetalFXSetting")
     }
 
     private func install(_ child: UIView, in parent: UIView) {
@@ -224,15 +226,15 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         do {
             presenters = [try MetalScreenPresenter(layer: top), try MetalScreenPresenter(layer: bottom)]
             // The bottom screen has no motion source (its UI changes without geometry), so it gets the single-frame scaler.
-            presenters[0].configureMetalFX(mode: setting.mode, interpolates: setting.interpolates)
+            presenters[0].configureMetalFX(mode: setting.mode, frameMultiple: setting.frameMultiple)
             presenters[1].configureMetalFX(mode: setting.mode == .temporal && runner != nil ? .spatial : setting.mode,
-                                           interpolates: setting.interpolates && runner == nil)
+                                           frameMultiple: runner == nil ? setting.frameMultiple : 1)
             scenes = runner == nil ? [TestScene(.top), TestScene(.bottom)] : []
             screens.top.isHidden = true
             screens.bottom.isHidden = true
             shell.layoutIfNeeded()
-            effectLabel.text = "MetalFX \(setting.mode.title)\(setting.interpolates ? " + Frame Interpolation" : "")"
-            effectLabel.isHidden = runner != nil   // games show no overlay; the status still goes to the device log
+            effectLabel.text = "MetalFX \(setting.mode.title)\(setting.frameMultiple > 1 ? " + \(setting.frameMultiple)x Frame Interpolation" : "")"
+            effectLabel.isHidden = runner != nil && !Self.showsFrameRate   // the status always goes to the device log
             tick = 0
             displayLink?.invalidate()
             let link: CADisplayLink
@@ -246,12 +248,16 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
             link.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: hz, preferred: hz)
             link.add(to: .main, forMode: .common)
             displayLink = link
-            (gameRate, shownTop, pendingTop, topTicks) = ((CACurrentMediaTime(), runner?.snapshot.gameFrames ?? 0, 30), nil, [], 0)
+            _ = presenters.first?.takeStats()
+            (gameRate, shownTop, pendingTop, topTicks) = ((CACurrentMediaTime(), runner?.snapshot.gameFrames ?? 0, 30, 0, 0), nil, [], 0)
         } catch {
             showLibrary()
             showError(error)
         }
     }
+
+    // TDS_HUD=1 shows the frame-rate line over a running game.
+    private static let showsFrameRate = ProcessInfo.processInfo.environment["TDS_HUD"] != nil
 
     // A game shows its newest frames. Test scenes run at 60 Hz with a 30 Hz source: even ticks produce a source frame and
     // show the interpolated (or raw) image, odd ticks show the real upscaled frame.
@@ -260,47 +266,47 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         if let runner {
             let state = runner.snapshot
             let setting = Self.effects[effectIndex]
-            let output = presenters.first?.scaling.map { " · \(setting.mode.title)\(setting.interpolates ? "+FI" : "") \($0)" }
+            let output = presenters.first?.scaling.map { " · \(setting.mode.title)\(setting.frameMultiple > 1 ? "+FI\(setting.frameMultiple)x" : "") \($0)" }
                 ?? state.topHighRes.map { " · \($0.color.width)×\($0.color.height)" } ?? ""
             guard let link = displayLink else { return }
             measureGameRate(state.gameFrames, at: link.timestamp)
             let hz = Int((1 / (link.targetTimestamp - link.timestamp)).rounded())
             effectLabel.text = state.stop.map { "Stopped: \($0)" }
-                ?? "\(Int(gameRate.fps.rounded())) fps · \(hz) Hz · \(Int(state.speed * 100))%\(output)"
-            effectLabel.isHidden = state.stop == nil
+                ?? String(format: "%d fps → %d shown · %d Hz · GPU %.1f ms · %d%%%@", Int(gameRate.fps.rounded()), Int(gameRate.shown.rounded()),
+                          hz, gameRate.gpuMilliseconds, Int(state.speed * 100), output)
+            effectLabel.isHidden = state.stop == nil && !Self.showsFrameRate
             let fresh = state.frames != shownFrame   // temporal scalers must see each game frame once
             shownFrame = state.frames
             // Steady cadence: each top frame holds the same number of refreshes (4 for 30 fps at 120 Hz), so a few milliseconds
             // of arrival jitter never turns into 3- and 5-refresh holds. An early frame waits for its turn; a late one extends
-            // the current. With interpolation the first half shows the interpolated frame, the second half the real one.
+            // the current. Within the hold the presenter steps through the interpolated images and ends on the real one.
             // Up to two frames wait their turn, so one arriving early is shown late rather than skipped; a longer backlog drops the oldest.
             if let frame = state.topHighRes, frame.sequence > (pendingTop.last ?? shownTop)?.sequence ?? -1 { pendingTop = Array((pendingTop + [frame]).suffix(2)) }
             let hold = max(1, Int((Double(hz) / (gameRate.fps > 45 ? 60 : 30)).rounded()))
             topTicks += 1
-            var top: PICAHighResFrame?
-            if let pending = pendingTop.first, topTicks >= hold { (top, shownTop, topTicks) = (pending, pending, 0); pendingTop.removeFirst() }
-            else if topTicks == hold / 2 { top = shownTop }
-            for (presenter, (highRes, framebuffer)) in zip(presenters, [(top, state.top), (state.bottomHighRes, state.bottom)]) {
-                if let highRes { presenter.present(highRes) }
-                else if fresh, let framebuffer, let frame = try? FramebufferDecoder.decode(framebuffer) { presenter.present(frame) }
-            }
+            if let pending = pendingTop.first, topTicks >= hold || shownTop == nil { (shownTop, topTicks) = (pending, 0); pendingTop.removeFirst() }
+            if let shownTop { presenters[0].present(shownTop, slot: min(topTicks, hold - 1), of: hold) }
+            else if fresh, let framebuffer = state.top, let frame = try? FramebufferDecoder.decode(framebuffer) { presenters[0].present(frame) }
+            if let bottom = state.bottomHighRes { presenters[1].present(bottom, slot: 0, of: 1) }
+            else if fresh, let framebuffer = state.bottom, let frame = try? FramebufferDecoder.decode(framebuffer) { presenters[1].present(frame) }
             return
         }
         if tick % 2 == 0 {
             guard let frames = try? scenes.map({ try $0.frame(tick / 2) }) else { return }
             for (presenter, frame) in zip(presenters, frames) { presenter.present(frame) }
         } else {
-            for presenter in presenters where presenter.interpolates { presenter.presentUpscaled() }
+            for presenter in presenters { presenter.presentEncoded(slot: 1, of: 2) }
         }
     }
 
     // The game's own frame rate (new top-screen images per second), measured each second; games switch between 30 and 60.
     private func measureGameRate(_ frames: Int, at time: CFTimeInterval) {
         guard time - gameRate.time >= 1 else { return }
-        gameRate = (time, frames, max(1, Double(frames - gameRate.frames) / (time - gameRate.time)))
+        let elapsed = time - gameRate.time, stats = presenters.first?.takeStats() ?? (shown: 0, gpuMilliseconds: 0)
+        gameRate = (time, frames, max(1, Double(frames - gameRate.frames) / elapsed), Double(stats.shown) / elapsed, stats.gpuMilliseconds)
         if Int(time) % 10 == 0 {   // device logs, every ~10 s
-            NSLog("3duos status: %@ · panel max %d Hz%@", effectLabel.text ?? "", view.window?.windowScene?.screen.maximumFramesPerSecond ?? 0,
-                  ProcessInfo.processInfo.isLowPowerModeEnabled ? " · Low Power Mode" : "")
+            NSLog("3duos status: %@ · panel max %d Hz · thermal %d%@", effectLabel.text ?? "", view.window?.windowScene?.screen.maximumFramesPerSecond ?? 0,
+                  ProcessInfo.processInfo.thermalState.rawValue, ProcessInfo.processInfo.isLowPowerModeEnabled ? " · Low Power Mode" : "")
         }
     }
 

@@ -1,6 +1,6 @@
 // Input: frames of one 3DS screen in presentation order: CPU RGBA8 at LCD size (test scenes, software frames), or GPU frames
 //        with exact depth, motion and reactive mask at the internal resolution.
-// Output: a texture at the display's native size per frame and, when enabled, an interpolated one halfway to the previous frame.
+// Output: a texture at the display's native size per frame and, when enabled, 1 or 3 interpolated frames leading up to it.
 // Pos: MetalFX stage between the frame sources and MetalScreenPresenter; owns every scaler input texture.
 import Metal
 #if canImport(MetalFX)
@@ -64,8 +64,9 @@ final class MetalFXScreenPipeline {
     let height: Int
     let color: MTLTexture
     let output: MTLTexture
-    let interpolated: MTLTexture?
-    // MetalFX updates this after writing `output` and `interpolated`; encoders that read them must wait on it.
+    // Frames between the previous output and `output`, in display order: [1/2] at 2x, [1/4, 1/2, 3/4] at 4x.
+    let phases: [MTLTexture]
+    // MetalFX updates this after writing `output` and `phases`; encoders that read them must wait on it.
     let fence: MTLFence?
     var jitter = SIMD2<Float>.zero     // sub-pixel offset the renderer applied, in input pixels
     var depthReversed = false          // nearer is larger (the game tests depth with greater)
@@ -84,8 +85,11 @@ final class MetalFXScreenPipeline {
     static func supportsTemporal(_ device: MTLDevice) -> Bool { MTLFXTemporalScalerDescriptor.supportsDevice(device) }
 
     init(device: MTLDevice, width: Int, height: Int, outWidth: Int, outHeight: Int, mode: MetalFXMode,
-         interpolates: Bool, framesPerSecond: Float = 30) throws {
-        guard mode != .off, !(interpolates && mode == .spatial) else { throw MetalFXError.invalidConfiguration }
+         frameMultiple: Int = 1, framesPerSecond: Float = 30) throws {
+        guard mode != .off, [1, 2, 4].contains(frameMultiple), !(frameMultiple > 1 && mode == .spatial) else {
+            throw MetalFXError.invalidConfiguration
+        }
+        let interpolates = frameMultiple > 1
         self.mode = mode
         self.width = width
         self.height = height
@@ -118,7 +122,7 @@ final class MetalFXScreenPipeline {
             guard let scaler = d.makeSpatialScaler(device: device) else { throw MetalFXError.resourceFailed("Spatial") }
             color = try texture(.rgba8Unorm, width, height, scaler.colorTextureUsage)
             output = try texture(.rgba8Unorm, outWidth, outHeight, scaler.outputTextureUsage, .private)
-            (motion, depth, reactive, previous, interpolated, previousOutput, fence) = (nil, nil, nil, nil, nil, nil, nil)
+            (motion, depth, reactive, previous, previousOutput, fence) = (nil, nil, nil, nil, nil, nil); phases = []
             let (colorTexture, outputTexture) = (color, output)
             encodeScaler = { commandBuffer, _ in
                 scaler.colorTexture = colorTexture; scaler.outputTexture = outputTexture
@@ -149,31 +153,45 @@ final class MetalFXScreenPipeline {
         (self.motion, self.depth, self.reactive) = (motion, depth, reactive)
 
         if interpolates {
+            // MetalFX only makes the frame halfway between two successive inputs. At 4x a second interpolator sees the
+            // 60 fps stream previous, half, current: halfway again gives the quarters, each step with half the motion.
             guard MTLFXFrameInterpolatorDescriptor.supportsDevice(device) else { throw MetalFXError.unsupported("Frame Interpolation") }
-            let f = MTLFXFrameInterpolatorDescriptor()
-            f.scaler = scaler
-            f.colorTextureFormat = .rgba8Unorm; f.depthTextureFormat = .r32Float
-            f.motionTextureFormat = .rg16Float; f.outputTextureFormat = .rgba8Unorm
-            f.inputWidth = width; f.inputHeight = height; f.outputWidth = outWidth; f.outputHeight = outHeight
-            guard let interpolator = f.makeFrameInterpolator(device: device) else { throw MetalFXError.resourceFailed("Frame Interpolation") }
-            interpolator.fence = fence
-            let out = try texture(.rgba8Unorm, outWidth, outHeight, interpolator.outputTextureUsage, .private)
-            let previousUpscaled = try texture(.rgba8Unorm, outWidth, outHeight, interpolator.colorTextureUsage, .private)
-            (interpolated, previousOutput) = (out, previousUpscaled)
-            let current = output
+            func interpolator(linkedTo scaler: (any MTLFXFrameInterpolatableScaler)?) throws -> MTLFXFrameInterpolator {
+                let f = MTLFXFrameInterpolatorDescriptor()
+                f.scaler = scaler
+                f.colorTextureFormat = .rgba8Unorm; f.depthTextureFormat = .r32Float
+                f.motionTextureFormat = .rg16Float; f.outputTextureFormat = .rgba8Unorm
+                f.inputWidth = width; f.inputHeight = height; f.outputWidth = outWidth; f.outputHeight = outHeight
+                guard let made = f.makeFrameInterpolator(device: device) else { throw MetalFXError.resourceFailed("Frame Interpolation") }
+                made.fence = fence
+                return made
+            }
+            let half = try interpolator(linkedTo: scaler)
+            let quarter = frameMultiple == 4 ? try interpolator(linkedTo: nil) : nil
+            let outputs = try (0..<frameMultiple - 1).map { _ in try texture(.rgba8Unorm, outWidth, outHeight, half.outputTextureUsage.union(half.colorTextureUsage), .private) }
+            let previousUpscaled = try texture(.rgba8Unorm, outWidth, outHeight, half.colorTextureUsage, .private)
+            (phases, previousOutput) = (outputs, previousUpscaled)
+            let current = output, mid = outputs[outputs.count / 2]
             encodeInterpolator = { [unowned self] commandBuffer, reset in
-                interpolator.colorTexture = current; interpolator.prevColorTexture = previousUpscaled
-                interpolator.depthTexture = depth; interpolator.motionTexture = motion; interpolator.outputTexture = out
-                interpolator.motionVectorScaleX = 1; interpolator.motionVectorScaleY = 1
-                interpolator.deltaTime = 1 / framesPerSecond
-                interpolator.nearPlane = 0.1; interpolator.farPlane = 1
-                interpolator.fieldOfView = 1; interpolator.aspectRatio = Float(width) / Float(height)
-                interpolator.isDepthReversed = depthReversed
-                interpolator.shouldResetHistory = reset
-                interpolator.encode(commandBuffer: commandBuffer)
+                func run(_ i: MTLFXFrameInterpolator, from prev: MTLTexture, to color: MTLTexture, into out: MTLTexture,
+                         motionScale: Float, interval: Float, reset: Bool) {
+                    i.colorTexture = color; i.prevColorTexture = prev
+                    i.depthTexture = depth; i.motionTexture = motion; i.outputTexture = out
+                    i.motionVectorScaleX = motionScale; i.motionVectorScaleY = motionScale
+                    i.deltaTime = interval
+                    i.nearPlane = 0.1; i.farPlane = 1
+                    i.fieldOfView = 1; i.aspectRatio = Float(width) / Float(height)
+                    i.isDepthReversed = depthReversed
+                    i.shouldResetHistory = reset
+                    i.encode(commandBuffer: commandBuffer)
+                }
+                run(half, from: previousUpscaled, to: current, into: mid, motionScale: 1, interval: 1 / framesPerSecond, reset: reset)
+                guard let quarter else { return }
+                run(quarter, from: previousUpscaled, to: mid, into: outputs[0], motionScale: 0.5, interval: 0.5 / framesPerSecond, reset: reset)
+                run(quarter, from: mid, to: current, into: outputs[2], motionScale: 0.5, interval: 0.5 / framesPerSecond, reset: false)
             }
         } else {
-            (interpolated, previousOutput) = (nil, nil)
+            (phases, previousOutput) = ([], nil)
         }
         let (colorTexture, outputTexture) = (color, output)
         encodeScaler = { [unowned self] commandBuffer, reset in
@@ -253,11 +271,11 @@ private extension MTLBlitCommandEncoder {
 // The iOS Simulator SDK has no MetalFX: same interface, never available, so frames are drawn as rendered.
 final class MetalFXScreenPipeline {
     let mode: MetalFXMode, width: Int, height: Int
-    let color: MTLTexture, output: MTLTexture, interpolated: MTLTexture? = nil, fence: MTLFence? = nil
+    let color: MTLTexture, output: MTLTexture, phases: [MTLTexture] = [], fence: MTLFence? = nil
     var jitter = SIMD2<Float>.zero, depthReversed = false
     static func supportsTemporal(_ device: MTLDevice) -> Bool { false }
     init(device: MTLDevice, width: Int, height: Int, outWidth: Int, outHeight: Int, mode: MetalFXMode,
-         interpolates: Bool, framesPerSecond: Float = 30) throws { throw MetalFXError.unsupported("MetalFX") }
+         frameMultiple: Int = 1, framesPerSecond: Float = 30) throws { throw MetalFXError.unsupported("MetalFX") }
     func upload(rgba: UnsafeRawPointer, depth: [Float]? = nil, motion: [SIMD2<Float>]? = nil) {}
     func upload(color: MTLTexture, depth: MTLTexture?, motion: MTLTexture?, reactive: MTLTexture?, commandBuffer: MTLCommandBuffer) {}
     func encode(commandBuffer: MTLCommandBuffer) {}

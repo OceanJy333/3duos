@@ -1,5 +1,5 @@
 // Input: a synthetic panning scene rendered on the CPU, scale factor as optional argument.
-// Output: PSNR of every MetalFX mode against the native high-resolution scene, and interpolation against its midpoint.
+// Output: PSNR of every MetalFX mode against the native high-resolution scene, and each interpolated frame against its time.
 // Pos: standalone MetalFX pipeline check, independent of the app.
 import Foundation
 import Metal
@@ -57,6 +57,15 @@ func psnr(_ a: [UInt8], _ b: [UInt8]) -> Double {
     return 10 * log10(255 * 255 / max(sum / Double(a.count / 4 * 3), 1e-9))
 }
 
+// x centre of the red disc in output pixels; it moves 5 input pixels per frame, so it shows where in time a frame sits.
+func discX(_ p: [UInt8]) -> Double {
+    var sum = 0.0, n = 0.0
+    for i in stride(from: 0, to: p.count, by: 4) where p[i] > 200 && p[i + 1] < 80 && p[i + 2] < 80 {
+        sum += Double(i / 4 % (width * scale)); n += 1
+    }
+    return sum / max(n, 1)
+}
+
 func readback(_ texture: MTLTexture, waiting fence: MTLFence?) -> [UInt8] {
     let bytes = texture.width * texture.height * 4
     let buffer = device.makeBuffer(length: bytes, options: .storageModeShared)!
@@ -73,18 +82,18 @@ func readback(_ texture: MTLTexture, waiting fence: MTLFence?) -> [UInt8] {
     return Array(UnsafeBufferPointer(start: buffer.contents().bindMemory(to: UInt8.self, capacity: bytes), count: bytes))
 }
 
-func run(_ mode: MetalFXMode, interpolate: Bool) throws -> Bool {
-    let name = mode.title + (interpolate ? " + Frame Interpolation" : "")
+func run(_ mode: MetalFXMode, frameMultiple: Int) throws -> Bool {
+    let name = mode.title + (frameMultiple > 1 ? " + \(frameMultiple)x Frame Interpolation" : "")
     let pipeline: MetalFXScreenPipeline
     do {
         pipeline = try MetalFXScreenPipeline(device: device, width: width, height: height, outWidth: width * scale, outHeight: height * scale,
-                                             mode: mode, interpolates: interpolate)
+                                             mode: mode, frameMultiple: frameMultiple)
     } catch MetalFXError.unsupported(let what) {
         print("SKIP \(name): \(what) unsupported on \(device.name)")
         return true
     }
     let frames = 16
-    var last: [UInt8] = [], mid: [UInt8] = []
+    var last: [UInt8] = [], previousOutput: [UInt8] = [], phases: [[UInt8]] = []
     for n in 0..<frames {
         let low = render(scale: 1, t: Double(n))
         low.withUnsafeBytes { pipeline.upload(rgba: $0.baseAddress!) }
@@ -93,9 +102,10 @@ func run(_ mode: MetalFXMode, interpolate: Bool) throws -> Bool {
         command.commit()
         command.waitUntilCompleted()
         precondition(command.status == .completed, "\(name): \(String(describing: command.error))")
+        if n == frames - 2 { previousOutput = readback(pipeline.output, waiting: pipeline.fence) }
         if n == frames - 1 {
             last = readback(pipeline.output, waiting: pipeline.fence)
-            if let interpolated = pipeline.interpolated { mid = readback(interpolated, waiting: pipeline.fence) }
+            phases = pipeline.phases.map { readback($0, waiting: pipeline.fence) }
         }
     }
     let truth = render(scale: scale, t: Double(frames - 1))
@@ -103,20 +113,25 @@ func run(_ mode: MetalFXMode, interpolate: Bool) throws -> Bool {
     let score = psnr(last, truth), base = psnr(baseline, truth)
     print(String(format: "%@: frame PSNR %.2f dB (bilinear %.2f dB)", name, score, base))
     var ok = score > base - 3
-    if interpolate {
-        let midTruth = render(scale: scale, t: Double(frames) - 1.5)
-        let blend = zip(bilinear(render(scale: 1, t: Double(frames) - 2)), baseline).map { UInt8((Int($0) + Int($1)) / 2) }
-        let interpolatedScore = psnr(mid, midTruth), blendScore = psnr(blend, midTruth), copyScore = psnr(last, midTruth)
-        print(String(format: "  midpoint PSNR %.2f dB (cross-fade %.2f dB, current frame %.2f dB)",
-                     interpolatedScore, blendScore, copyScore))
+    let previous = bilinear(render(scale: 1, t: Double(frames - 2)))
+    for (k, frame) in phases.enumerated() {
+        // Phase k of n sits at fraction (k + 1) / n of the way from the previous frame to the last.
+        let f = Double(k + 1) / Double(frameMultiple)
+        let truth = render(scale: scale, t: Double(frames - 2) + f)
+        let blend = zip(previous, baseline).map { UInt8(Double($0) * (1 - f) + Double($1) * f) }
+        let score = psnr(frame, truth), blendScore = psnr(blend, truth), nearest = psnr(f < 0.5 ? previousOutput : last, truth)
+        // Placement error of the disc as a fraction of one frame's motion: 0 is exact, 0.25 means a quarter frame off.
+        let timing = abs(discX(frame) - discX(truth)) / Double(5 * scale)
+        print(String(format: "  t=%.2f PSNR %.2f dB (cross-fade %.2f dB, nearest frame %.2f dB), disc off by %.2f frame",
+                     f, score, blendScore, nearest, timing))
         if let dir = ProcessInfo.processInfo.environment["DUMP_DIR"] {
-            for (label, pixels) in [("mid", mid), ("last", last), ("truth", midTruth)] {
+            for (label, pixels) in [("phase\(k)", frame), ("truth\(k)", truth)] {
                 var ppm = Data("P6\n\(width * scale) \(height * scale)\n255\n".utf8)
                 for i in stride(from: 0, to: pixels.count, by: 4) { ppm.append(contentsOf: pixels[i..<i + 3]) }
-                try ppm.write(to: URL(fileURLWithPath: "\(dir)/\(mode.title)-\(label).ppm"))
+                try ppm.write(to: URL(fileURLWithPath: "\(dir)/\(name)-\(label).ppm"))
             }
         }
-        ok = ok && interpolatedScore > copyScore && interpolatedScore > blendScore
+        ok = ok && score > nearest - 1 && timing < 0.1
     }
     return ok
 }
@@ -124,7 +139,7 @@ func run(_ mode: MetalFXMode, interpolate: Bool) throws -> Bool {
 // A static scene rendered with Halton jitter: MetalFX must be told the same offset the geometry moved by.
 func jitterScore(sign: Float) throws -> Double {
     let pipeline = try MetalFXScreenPipeline(device: device, width: width, height: height, outWidth: width * scale,
-                                             outHeight: height * scale, mode: .temporal, interpolates: false)
+                                             outHeight: height * scale, mode: .temporal)
     func halton(_ i: Int, _ b: Int) -> Double { var f = 1.0, r = 0.0, i = i; while i > 0 { f /= Double(b); r += f * Double(i % b); i /= b }; return r }
     let zero = [SIMD2<Float>](repeating: .zero, count: width * height)
     for n in 0..<24 {
@@ -139,8 +154,8 @@ func jitterScore(sign: Float) throws -> Double {
 }
 
 var passed = true
-for (mode, interpolate) in [(MetalFXMode.spatial, false), (.temporal, false), (.temporal, true)] {
-    passed = try run(mode, interpolate: interpolate) && passed
+for (mode, multiple) in [(MetalFXMode.spatial, 1), (.temporal, 1), (.temporal, 2), (.temporal, 4)] {
+    passed = try run(mode, frameMultiple: multiple) && passed
 }
 let same = try jitterScore(sign: 1), opposite = try jitterScore(sign: -1)
 print(String(format: "Jitter: offset = geometry shift %.2f dB, negated %.2f dB", same, opposite))
