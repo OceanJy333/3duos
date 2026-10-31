@@ -110,6 +110,9 @@ final class GameRunner {
         if perf.start > 0 {
             NSLog("3duos perf: sleep %.0f%% · gx wait %.0f%% · GPU %.0f ms/s · worst frame gap %.0f ms · stale %d", perf.slept / elapsed * 100,
                   Double(gx - perf.gx) / 1e7 / elapsed, Double(gpu - perf.gpu) / 1e6 / elapsed, perf.worstGap * 1000, perf.stale)
+            if let events = kernel.gpu.renderer(memory: kernel.memory).metal?.statistics.takeEvents(), !events.isEmpty {
+                NSLog("3duos passes/s: %@", events.sorted { $0.key < $1.key }.map { "\($0.key) \(Int(Double($0.value) / elapsed))" }.joined(separator: " · "))
+            }
         }
         perf = (now, 0, 0, perf.lastImage, 0, gx, gpu)
     }

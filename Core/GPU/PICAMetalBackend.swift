@@ -56,13 +56,17 @@ final class PICAMetalBackend: PICAPixelBackend {
     }
     private var arenaOffset = 0
     private var lutOffset = -1, fogOffset = -1, programOffset = -1, programVersion = -1
+    private var programHash = (version: -1, hash: 0)   // content hash of the current program, for the vertex recompiler
     let textures: PICAMetalTextures
     private(set) var waitNanoseconds: UInt64 = 0   // time the emulation thread waited for the GPU
     // GPU execution time of completed command buffers (written on Metal's completion thread).
     final class Statistics {
         private let lock = NSLock()
         private var seconds = 0.0, count = 0
+        private var events: [String: Int] = [:]   // render passes and syncs by cause (PROFILE)
         func add(_ s: Double) { lock.lock(); seconds += max(0, s); count += 1; lock.unlock() }
+        func note(_ event: String) { lock.lock(); events[event, default: 0] += 1; lock.unlock() }
+        func takeEvents() -> [String: Int] { lock.lock(); defer { events = [:]; lock.unlock() }; return events }
         var snapshot: (nanoseconds: UInt64, submissions: Int) { lock.lock(); defer { lock.unlock() }; return (UInt64(seconds * 1e9), count) }
     }
     let statistics = Statistics()
@@ -125,6 +129,7 @@ final class PICAMetalBackend: PICAPixelBackend {
 
     func draw(_ mesh: PICAMesh, state: PICADrawState, color: PICASurface?, depth: PICASurface?, textures: [PICADecodedTexture?]) {
         guard !mesh.indices.isEmpty, state.target.width > 0, state.target.height > 0, color != nil || depth != nil else { return }
+        statistics.note("draw")
         let colorTarget = color.map { target($0, format: state.target.colorFormat, isDepth: false) }
         let depthTarget = depth.map { target($0, format: state.target.depthFormat, isDepth: true) }
         for t in [colorTarget, depthTarget] { if let t, t.stale { endEncoder(); upload(t) } }
@@ -164,7 +169,16 @@ final class PICAMetalBackend: PICAPixelBackend {
         let bound = (0..<3).map { u in textures[u].map { self.textures.texture($0, linear: state.textures[u].linear) } }
         let uniforms = PICAMetalState.uniforms(state, textures: bound, scale: scale)
         let key = PICAMetalState.pipelineKey(state, hasColor: colorTarget != nil, hasDepth: depthTarget != nil, motion: colorTarget?.motion != nil)
-        encoder.setRenderPipelineState(pipelines.pipeline(key, uniforms: uniforms))
+        if programHash.version != mesh.program.version {
+            var hasher = Hasher(); hasher.combine(mesh.program.code); hasher.combine(mesh.program.swizzles)
+            programHash = (mesh.program.version, hasher.finalize())
+        }
+        let vertexKey = PICAMetalVertexCompiler.key(mesh, programHash: programHash.hash)
+        encoder.setRenderPipelineState(pipelines.pipeline(key, uniforms: uniforms, vertex: vertexKey) {
+            let source = PICAMetalVertexCompiler.source(vertexKey, code: mesh.program.code, swizzles: mesh.program.swizzles)
+            PICAMetalVertexCompiler.dump(vertexKey, code: mesh.program.code, swizzles: mesh.program.swizzles, compiled: source != nil)
+            return source
+        })
         encoder.setDepthStencilState(depthState(PICAMetalState.depthKey(state)))
         encoder.setStencilReferenceValue(UInt32(state.merger.stencilRef))
         let b = state.merger.blendColor
@@ -207,6 +221,7 @@ final class PICAMetalBackend: PICAPixelBackend {
 
     private func beginEncoder(_ color: Target?, _ depth: Target?) {
         endEncoder()
+        statistics.note(color?.motion != nil ? "pass.top" : "pass.other")
         let pass = MTLRenderPassDescriptor()
         for (i, texture) in [color?.texture, color?.motion, color?.reactive, color?.layer].enumerated() {
             guard let texture else { continue }
@@ -218,6 +233,7 @@ final class PICAMetalBackend: PICAPixelBackend {
         }
         encoder = makeCommandBuffer().makeRenderCommandEncoder(descriptor: pass)
         encoder?.setDepthClipMode(.clamp)
+        encoder?.label = color?.motion != nil ? "PICA top" : "PICA other"
         encoderTargets = (color, depth)
     }
 
@@ -243,6 +259,7 @@ final class PICAMetalBackend: PICAPixelBackend {
             pass.colorAttachments[i + 1].storeAction = .store
         }
         t.layerUsed = false
+        statistics.note("clear")
         makeCommandBuffer().makeRenderCommandEncoder(descriptor: pass)?.endEncoding()
     }
 
@@ -250,6 +267,7 @@ final class PICAMetalBackend: PICAPixelBackend {
     private func upload(_ t: Target) {
         guard let mirror = t.mirror,
               let source = device.makeBuffer(bytes: mirror.bytes, length: t.byteCount, options: .storageModeShared) else { return }
+        statistics.note(t.isDepth ? "upload.depth" : "upload.color")
         let pass = MTLRenderPassDescriptor()
         if t.isDepth {
             pass.depthAttachment.texture = t.texture; pass.depthAttachment.storeAction = .store
@@ -259,6 +277,7 @@ final class PICAMetalBackend: PICAPixelBackend {
         }
         let e = makeCommandBuffer().makeRenderCommandEncoder(descriptor: pass)!
         e.setRenderPipelineState(t.isDepth ? uploads.depth : uploads.color)
+        e.label = "PICA upload"
         if t.isDepth {
             let d = MTLDepthStencilDescriptor(); d.depthCompareFunction = .always; d.isDepthWriteEnabled = true
             let s = MTLStencilDescriptor(); s.depthStencilPassOperation = .replace; d.frontFaceStencil = s; d.backFaceStencil = s
@@ -278,11 +297,13 @@ final class PICAMetalBackend: PICAPixelBackend {
 
     private func commit(writeBack: Bool) {
         guard let commandBuffer else { return }
+        statistics.note(writeBack ? "finish" : "submit")
         endEncoder()
         if writeBack { for t in targets where t.layerUsed { mergeLayer(t) } }   // the guest reads the frame with its UI
         for t in targets { t.drawn = false }
         if writeBack, targets.contains(where: { $0.gpuNewer }), let compute = commandBuffer.makeComputeCommandEncoder() {
             for t in targets where t.gpuNewer {
+                statistics.note("writeback")
                 compute.setComputePipelineState(t.isDepth ? kernels.depth : kernels.color)
                 compute.setTexture(t.texture, index: 0)
                 if let stencil = t.stencil { compute.setTexture(stencil, index: 1) }
@@ -292,6 +313,7 @@ final class PICAMetalBackend: PICAPixelBackend {
                 compute.dispatchThreads(MTLSize(width: t.width, height: t.height, depth: 1), threadsPerThreadgroup: MTLSize(width: 8, height: 8, depth: 1))
                 t.gpuNewer = false; t.unsynced = true
             }
+            compute.label = "PICA writeback"
             compute.endEncoding()
         }
         commandBuffer.addCompletedHandler { [statistics] b in statistics.add(b.gpuEndTime - b.gpuStartTime) }

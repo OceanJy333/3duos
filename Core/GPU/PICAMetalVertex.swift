@@ -1,6 +1,7 @@
 // input: a draw's raw vertex attributes, triangle-list indices, shader registers, program and uniforms.
-// output: `PICAMesh` (what the renderer hands the Metal backend), its packed `Shader` block, and the MSL vertex function
-//         that runs the PICA vertex shader per vertex and emits clip positions with the viewport folded in.
+// output: `PICAMesh` (what the renderer hands the Metal backend), its packed `Shader` block, and the MSL interpreter vertex
+//         function that runs any PICA vertex shader per vertex; `common` (helpers, clip-space output) is shared with
+//         PICAMetalVertexCompiler's specialized functions.
 // pos: GPU twin of PICAShaderUnit + PICAVertexProcessor + PICAClipper; compiled with safe math so NaN/infinity rules hold.
 
 struct PICAMesh {
@@ -36,7 +37,9 @@ enum PICAMetalVertex {
         return out
     }
 
-    static let source = """
+    static let source = common + interpreter
+
+    static let common = """
     #include <metal_stdlib>
     using namespace metal;
 
@@ -71,6 +74,39 @@ enum PICAMetalVertex {
         return negate ? -r : r;
     }
     static int integer(float f) { return isnan(f) ? 0 : int(clamp(f, -1e9, 1e9)); }
+    static bool compare(uint op, float a, float b) {
+        switch (op) { case 0: return a == b; case 1: return a != b; case 2: return a < b; case 3: return a <= b;
+                      case 4: return a > b; case 5: return a >= b; default: return false; }
+    }
+    static float4 lit(float4 a) {
+        float power = a.z > 0 ? pow(max(a.y, 0.0), clamp(a.w, -128.0, 128.0)) : 0;
+        return float4(1, max(a.x, 0.0), a.x > 0 ? power : 0, 1);
+    }
+
+    // Semantic slots: 0-3 position, 4-7 quaternion, 8-11 color, 12-15 texcoord0/1, 16 texcoord0 w, 18-20 view, 22-23 texcoord2.
+    static VertexOut clipOutput(thread float *slots, constant Shader &s) {
+        VertexOut o;
+        float4 p = float4(slots[0], slots[1], slots[2], slots[3]);
+        // PICA view volume -w <= x, y <= w, -w <= z <= 0, w >= 1e-5, user plane; the viewport is folded into the target's clip space.
+        o.position = float4(((p.x + p.w) * s.viewport.x + s.viewport.z * p.w) * 2 / s.target.x - p.w,
+                            p.w - ((p.y + p.w) * s.viewport.y + s.viewport.w * p.w) * 2 / s.target.y, p.z * s.target.z + s.target.w * p.w, p.w);
+        o.clip[0] = p.x + p.w; o.clip[1] = p.w - p.x; o.clip[2] = p.y + p.w; o.clip[3] = p.w - p.y; o.clip[4] = p.w - 0.00001;
+        o.clip[5] = s.map.w != 0 ? dot(p, s.clipPlane) : 1;
+        // z is the scaled PICA depth (clamped by the depth clip mode, like the hardware), so -w <= z <= 0 is clipped here.
+        o.clip[6] = -p.z; o.clip[7] = p.z + p.w;
+        o.depth = p.z / p.w; o.w = p.w;
+        // The hardware takes the absolute value and saturates vertex colors before interpolation.
+        o.color = min(abs(float4(slots[8], slots[9], slots[10], slots[11])), 1.0);
+        o.tex01 = float4(slots[12], slots[13], slots[14], slots[15]);
+        o.tex2W = float4(slots[22], slots[23], slots[16], 0);
+        o.quat = float4(slots[4], slots[5], slots[6], slots[7]);
+        o.view = float4(slots[18], slots[19], slots[20], 0);
+        o.prev = 0;
+        return o;
+    }
+    """
+
+    static let interpreter = """
     static float4 readRegister(thread float4 *file, constant float4 *u, int3 address, int reg, int index) {
         if (reg < 0x20) return file[reg];
         if (index == 0) return u[reg - 0x20];
@@ -86,11 +122,6 @@ enum PICAMetalVertex {
         bool x = (((hex >> 25) & 1) != 0) == cx, y = (((hex >> 24) & 1) != 0) == cy;
         switch ((hex >> 22) & 3) { case 0: return x || y; case 1: return x && y; case 2: return x; default: return y; }
     }
-    static bool compare(uint op, float a, float b) {
-        switch (op) { case 0: return a == b; case 1: return a != b; case 2: return a < b; case 3: return a <= b;
-                      case 4: return a > b; case 5: return a >= b; default: return false; }
-    }
-
     // PICAShaderUnit.run, instruction for instruction.
     static void run(thread float4 *file, const device uint *code, const device uint *swizzles, constant float4 *u,
                     uint bools, uint4 ints, int entry) {
@@ -120,10 +151,7 @@ enum PICAMetalVertex {
                 case 0x04: case 0x19: writeRegister(file, destination, float4(1, a.y * b.y, a.z, b.w), mask); break;
                 case 0x05: writeRegister(file, destination, float4(exp2(a.x)), mask); break;
                 case 0x06: writeRegister(file, destination, float4(log2(a.x)), mask); break;
-                case 0x07: {
-                    float power = a.z > 0 ? pow(max(a.y, 0.0), clamp(a.w, -128.0, 128.0)) : 0;
-                    writeRegister(file, destination, float4(1, max(a.x, 0.0), a.x > 0 ? power : 0, 1), mask); break;
-                }
+                case 0x07: writeRegister(file, destination, lit(a), mask); break;
                 case 0x08: writeRegister(file, destination, multiply(a, b), mask); break;
                 case 0x09: case 0x1A: writeRegister(file, destination, select(float4(0), float4(1), a >= b), mask); break;
                 case 0x0A: case 0x1B: writeRegister(file, destination, select(float4(0), float4(1), a < b), mask); break;
@@ -192,7 +220,6 @@ enum PICAMetalVertex {
         }
     }
 
-    // Semantic slots: 0-3 position, 4-7 quaternion, 8-11 color, 12-15 texcoord0/1, 16 texcoord0 w, 18-20 view, 22-23 texcoord2.
     static void mapOutputs(thread float4 *file, constant Shader &s, thread float *slots) {
         for (uint a = 0; a < s.map.z; a++) {
             float4 v = file[32 + s.outputs[a / 4][a % 4]];
@@ -211,23 +238,7 @@ enum PICAMetalVertex {
         for (int i = 0; i < 32; i++) slots[i] = 1;   // outputs the map leaves unset read as 1
         run(file, program, program + 4096, s.uniforms, s.config.x, s.ints, int(s.config.y));
         mapOutputs(file, s, slots);
-        VertexOut o;
-        float4 p = float4(slots[0], slots[1], slots[2], slots[3]);
-        // PICA view volume -w <= x, y <= w, -w <= z <= 0, w >= 1e-5, user plane; the viewport is folded into the target's clip space.
-        o.position = float4(((p.x + p.w) * s.viewport.x + s.viewport.z * p.w) * 2 / s.target.x - p.w,
-                            p.w - ((p.y + p.w) * s.viewport.y + s.viewport.w * p.w) * 2 / s.target.y, p.z * s.target.z + s.target.w * p.w, p.w);
-        o.clip[0] = p.x + p.w; o.clip[1] = p.w - p.x; o.clip[2] = p.y + p.w; o.clip[3] = p.w - p.y; o.clip[4] = p.w - 0.00001;
-        o.clip[5] = s.map.w != 0 ? dot(p, s.clipPlane) : 1;
-        // z is the scaled PICA depth (clamped by the depth clip mode, like the hardware), so -w <= z <= 0 is clipped here.
-        o.clip[6] = -p.z; o.clip[7] = p.z + p.w;
-        o.depth = p.z / p.w; o.w = p.w;
-        // The hardware takes the absolute value and saturates vertex colors before interpolation.
-        o.color = min(abs(float4(slots[8], slots[9], slots[10], slots[11])), 1.0);
-        o.tex01 = float4(slots[12], slots[13], slots[14], slots[15]);
-        o.tex2W = float4(slots[22], slots[23], slots[16], 0);
-        o.quat = float4(slots[4], slots[5], slots[6], slots[7]);
-        o.view = float4(slots[18], slots[19], slots[20], 0);
-        o.prev = 0;
+        VertexOut o = clipOutput(slots, s);
         if (s.config.w != 0) {
             run(file, program, program + 4096, s.previous, s.config.x, s.ints, int(s.config.y));
             for (int i = 0; i < 4; i++) slots[i] = 1;

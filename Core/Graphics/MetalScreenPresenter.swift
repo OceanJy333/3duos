@@ -172,6 +172,7 @@ final class MetalScreenPresenter {
     }
 
     private func encode(_ effects: MetalFXScreenPipeline, into command: MTLCommandBuffer) {
+        command.label = "MetalFX"
         effects.encode(commandBuffer: command)
         command.addCompletedHandler { [weak self] done in
             guard let self else { return }
@@ -188,6 +189,7 @@ final class MetalScreenPresenter {
         pass.colorAttachments[0].loadAction = .dontCare
         pass.colorAttachments[0].storeAction = .store
         guard let encoder = command.makeRenderCommandEncoder(descriptor: pass) else { return false }
+        encoder.label = "Present"
         if let fence { encoder.waitForFence(fence, before: .fragment) }
         encoder.setRenderPipelineState(pipeline)
         encoder.setFragmentTexture(texture, index: 0)

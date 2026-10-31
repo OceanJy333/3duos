@@ -82,7 +82,7 @@ extension PICAMetalBackend {
         endEncoder()
         let commandBuffer = makeCommandBuffer()
         guard let e = commandBuffer.makeComputeCommandEncoder() else { return false }
-        e.setComputePipelineState(kernels.lcd)
+        e.label = "PICA lcd"; e.setComputePipelineState(kernels.lcd)
         e.setTexture(source.texture, index: 0); e.setTexture(depth?.texture, index: 1)
         e.setTexture(color, index: 2); e.setTexture(depthPlane, index: 3)
         e.setTexture(source.motion, index: 4); e.setTexture(source.reactive, index: 5); e.setTexture(motion, index: 6); e.setTexture(reactive, index: 7)
@@ -111,10 +111,11 @@ extension PICAMetalBackend {
     func mergeLayer(_ target: Target) {
         guard let layer = target.layer else { return }
         target.layerUsed = false
+        statistics.note("merge")
         let commandBuffer = makeCommandBuffer(), merge = MTLRenderPassDescriptor()
         merge.colorAttachments[0].texture = target.texture; merge.colorAttachments[0].loadAction = .load; merge.colorAttachments[0].storeAction = .store
         if let e = commandBuffer.makeRenderCommandEncoder(descriptor: merge) {
-            e.setRenderPipelineState(uploads.layer); e.setFragmentTexture(layer, index: 0)
+            e.label = "PICA merge"; e.setRenderPipelineState(uploads.layer); e.setFragmentTexture(layer, index: 0)
             e.drawPrimitives(type: .triangle, vertexStart: 0, vertexCount: 3); e.endEncoding()
         }
         let clear = MTLRenderPassDescriptor()

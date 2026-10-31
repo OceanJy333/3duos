@@ -304,7 +304,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         guard time - gameRate.time >= 1 else { return }
         let elapsed = time - gameRate.time, stats = presenters.first?.takeStats() ?? (shown: 0, gpuMilliseconds: 0)
         gameRate = (time, frames, max(1, Double(frames - gameRate.frames) / elapsed), Double(stats.shown) / elapsed, stats.gpuMilliseconds)
-        if Int(time) % 10 == 0 {   // device logs, every ~10 s
+        if Int(time) % 10 == 0 || Self.showsFrameRate {   // device logs, every ~10 s (every second with TDS_HUD)
             NSLog("3duos status: %@ · panel max %d Hz · thermal %d%@", effectLabel.text ?? "", view.window?.windowScene?.screen.maximumFramesPerSecond ?? 0,
                   ProcessInfo.processInfo.thermalState.rawValue, ProcessInfo.processInfo.isLowPowerModeEnabled ? " · Low Power Mode" : "")
         }

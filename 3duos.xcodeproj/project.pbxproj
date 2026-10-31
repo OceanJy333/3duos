@@ -14,6 +14,7 @@
 		10F21C42BB0FCD1CDB6FDF5B /* DuosAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6819037113F5373366C63A9 /* DuosAppDelegate.swift */; };
 		12557519283BE8FF909167A5 /* PICALighting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5238B56B44401438FD4DF279 /* PICALighting.swift */; };
 		14793A759414E204F41EA4C5 /* KernelObjects.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FCCD3B9D8F50BF58C6D2DFF /* KernelObjects.swift */; };
+		1498B0CCA539D22CBCF096CE /* PICAMetalVertexCompiler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 465E9C8B0AB9C744D663334E /* PICAMetalVertexCompiler.swift */; };
 		14F39575E336000D61E7EE44 /* LibraryScreens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FEF5F37B3A0CF7467F7617F /* LibraryScreens.swift */; };
 		1614FED7BB5C6C5AF47D80AE /* GPUTransfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44A6655AE065DE84B707EF6D /* GPUTransfer.swift */; };
 		218B2FC74E02C27B5D92A4B1 /* ARMPageTable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12166CF2285B9CC2258C379E /* ARMPageTable.swift */; };
@@ -53,7 +54,6 @@
 		7A981947AD9C4A1320540ACF /* PICARasterizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E52FDC6B0FC36F2C39B369E2 /* PICARasterizer.swift */; };
 		7C1EB50F26463A9A24AC35EC /* CFGService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 622CF3A1112EEC4CE413DCE0 /* CFGService.swift */; };
 		7F6DC1E784B9DFB352CCCD6C /* PICAMetalFrames.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */; };
-		A1B2C3D4E5F6A7B8C9D0E1F2 /* PICAMetalPipelines.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* PICAMetalPipelines.swift */; };
 		8201056E949D59F237039BDC /* ARM11Multiply.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B230414BF222EF4225779F2 /* ARM11Multiply.swift */; };
 		83E18202093563F5A962C4ED /* ARM11Saturate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110FAC969070A316C290C63B /* ARM11Saturate.swift */; };
 		8884B091FDC0BEAE94DA9611 /* PICAMetalBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */; };
@@ -80,6 +80,7 @@
 		BB1F4DE3C1E2FAA604A8727E /* FatalErrorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39771B522D6DA1485D1278D3 /* FatalErrorService.swift */; };
 		BD0FB94DB493A7CB7FF01E1A /* SVCThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF498BB5B37A9842F6A6A48E /* SVCThread.swift */; };
 		BDEC5FB45BDFF26E0B2E4CF7 /* ConsoleInput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E725B804BE0E8D01C842814 /* ConsoleInput.swift */; };
+		C19EECDAB7AF2650E9027E2E /* PICAMetalPipelines.swift in Sources */ = {isa = PBXBuildFile; fileRef = F118D30ACE6AF119543AE742 /* PICAMetalPipelines.swift */; };
 		C1E76EF4377D5E0925F84DA3 /* PICAVertexProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11376DD3F386A4398CEC71D /* PICAVertexProcessor.swift */; };
 		C4F26A64E6FCECAA46E884D2 /* RootController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CC0C6DBC460805E7B04D658 /* RootController.swift */; };
 		C81D631C82F0C266944C8603 /* IPC.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5649309A2B6B3872892D57D /* IPC.swift */; };
@@ -128,6 +129,7 @@
 		4088259D1963EBAA599DB6F1 /* PICAFragment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAFragment.swift; sourceTree = "<group>"; };
 		42C23FBAE84DB78D020174D5 /* CityHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityHash.swift; sourceTree = "<group>"; };
 		44A6655AE065DE84B707EF6D /* GPUTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUTransfer.swift; sourceTree = "<group>"; };
+		465E9C8B0AB9C744D663334E /* PICAMetalVertexCompiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalVertexCompiler.swift; sourceTree = "<group>"; };
 		4AC626CD6C1EF87D1E0562FF /* PICARegisters.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARegisters.swift; sourceTree = "<group>"; };
 		5238B56B44401438FD4DF279 /* PICALighting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICALighting.swift; sourceTree = "<group>"; };
 		551870F16312E0E5730C5BD1 /* CartridgeReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartridgeReader.swift; sourceTree = "<group>"; };
@@ -143,7 +145,6 @@
 		7B0DE7386C67E49755843178 /* ARM11DataProcessing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11DataProcessing.swift; sourceTree = "<group>"; };
 		7E725B804BE0E8D01C842814 /* ConsoleInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleInput.swift; sourceTree = "<group>"; };
 		8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalFrames.swift; sourceTree = "<group>"; };
-		B1C2D3E4F5A6B7C8D9E0F1A2 /* PICAMetalPipelines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalPipelines.swift; sourceTree = "<group>"; };
 		879D8A0C43CE3CD73982B6F2 /* ARM11Decode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Decode.swift; sourceTree = "<group>"; };
 		891A12DDAE6888A37E94024D /* MetalFXScreenPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalFXScreenPipeline.swift; sourceTree = "<group>"; };
 		89E95209FF6ECAD4319E780B /* PICATextureCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICATextureCache.swift; sourceTree = "<group>"; };
@@ -182,6 +183,7 @@
 		DDA8E214BF42261B556608F9 /* PICAOutputMerger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAOutputMerger.swift; sourceTree = "<group>"; };
 		E52FDC6B0FC36F2C39B369E2 /* PICARasterizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARasterizer.swift; sourceTree = "<group>"; };
 		F085430BD38E0ED044551A7B /* PICAMetalTextures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalTextures.swift; sourceTree = "<group>"; };
+		F118D30ACE6AF119543AE742 /* PICAMetalPipelines.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalPipelines.swift; sourceTree = "<group>"; };
 		F231BB8B91224C0125BFDA21 /* PICAShaderProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAShaderProgram.swift; sourceTree = "<group>"; };
 		F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		FE58235DEF96D68C8DF7BE26 /* ConsolePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsolePresentation.swift; sourceTree = "<group>"; };
@@ -222,13 +224,14 @@
 				24E86D02FCDCC5F4BA8463BE /* PICAMath.swift */,
 				6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */,
 				8323DC1FE44854D14AE79E85 /* PICAMetalFrames.swift */,
-				B1C2D3E4F5A6B7C8D9E0F1A2 /* PICAMetalPipelines.swift */,
 				CA120DFFF787EBCC9A57DCCD /* PICAMetalKernels.swift */,
 				0989786F5A0440A1F5B5C652 /* PICAMetalLighting.swift */,
+				F118D30ACE6AF119543AE742 /* PICAMetalPipelines.swift */,
 				65693497CE0B5C8B033A5C1B /* PICAMetalShaders.swift */,
 				2C414BFD06F02E0582E7438F /* PICAMetalState.swift */,
 				F085430BD38E0ED044551A7B /* PICAMetalTextures.swift */,
 				0A85252C3A85E3C62610269F /* PICAMetalVertex.swift */,
+				465E9C8B0AB9C744D663334E /* PICAMetalVertexCompiler.swift */,
 				21C7EA2DA859E086AE6DD05B /* PICAMotion.swift */,
 				DDA8E214BF42261B556608F9 /* PICAOutputMerger.swift */,
 				8E35E5791E3FE98A25D0A42A /* PICAPixel.swift */,
@@ -517,13 +520,14 @@
 				EDFA5726932EE8B7F6629FCF /* PICAMath.swift in Sources */,
 				8884B091FDC0BEAE94DA9611 /* PICAMetalBackend.swift in Sources */,
 				7F6DC1E784B9DFB352CCCD6C /* PICAMetalFrames.swift in Sources */,
-				A1B2C3D4E5F6A7B8C9D0E1F2 /* PICAMetalPipelines.swift in Sources */,
 				2CE9AD80B9BAE04E33D5695D /* PICAMetalKernels.swift in Sources */,
 				BA4CE8BB0D9626B3B7E8ED06 /* PICAMetalLighting.swift in Sources */,
+				C19EECDAB7AF2650E9027E2E /* PICAMetalPipelines.swift in Sources */,
 				106CA0888942281B49355355 /* PICAMetalShaders.swift in Sources */,
 				2B386B3434BC8B987E44C086 /* PICAMetalState.swift in Sources */,
 				A3293E120DAB316694BB96E3 /* PICAMetalTextures.swift in Sources */,
 				3EE626A59D0F275E9E512F80 /* PICAMetalVertex.swift in Sources */,
+				1498B0CCA539D22CBCF096CE /* PICAMetalVertexCompiler.swift in Sources */,
 				3F3711427F273B13BD921B19 /* PICAMotion.swift in Sources */,
 				07B01372611F6DA8DFD284CB /* PICAOutputMerger.swift in Sources */,
 				55D525E297E5D01457122F21 /* PICAPixel.swift in Sources */,
