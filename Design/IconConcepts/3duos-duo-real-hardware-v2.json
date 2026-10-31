@@ -1,0 +1,19 @@
+{
+  "status": "concept",
+  "generatedAt": "2026-10-30",
+  "tool": "built-in image_gen",
+  "image": "3duos-duo-real-hardware-v2.png",
+  "references": [
+    {
+      "role": "real-device hands-on hardware photo",
+      "source": "https://www.tomsguide.com/phones/iphones/iphone-duo-hands-on-apple-nailed-it-and-just-put-everyone-else-on-notice",
+      "imageURL": "https://cdn.mos.cms.futurecdn.net/i4QF9zqZdmy4sZPuE8hXFa.jpg"
+    },
+    {
+      "role": "official Duo materials and hinge reference",
+      "source": "https://www.apple.com/newsroom/2026/09/apple-unveils-iphone-duo/",
+      "workspaceReference": "/Users/ocean/code/jj-bro/40-content/drafts/2026-10-23-iphone-duo-hands-on/materials/official/newsroom/Apple-iPhone-Duo-StandBy_big.jpg"
+    }
+  ],
+  "prompt": "Use case: product-mockup. Asset type: square iOS app icon CONCEPT v2 for 3duos, combining the REAL iPhone Duo hardware silhouette with a 3DS emulator displayed on its screen. Three references: Image 1 is a REAL hands-on photo of iPhone Duo and is the AUTHORITY for its hardware shape, polished thin titanium rim, broad rounded corners, black glass, and a SINGLE CONTINUOUS FLEXIBLE INNER DISPLAY across the fold. Image 2 is Apple official Duo StandBy product imagery, for exact edge profile, frame proportions and subtle hinge construction only. Image 3 is the previous concept, for coral-orange accent and overall close-up composition only; REPLACE its thick toy/laptop-like base and exposed separated hinge with the REAL DUO construction. Generate ONE square icon illustration on a solid deep graphite background. Subject: genuine silver iPhone Duo rotated so the central fold runs horizontally like a handheld console, partially open about 125 degrees, sculptural three-quarter frontal view from a slightly elevated angle. Keep the real Duo's proportions: broad short phone halves with rounded corners, very thin polished flat metal edges, narrow uniformly black bezel. The display surface must be ONE UNBROKEN glass sheet bending smoothly through the fold. There is NO bulky cylindrical hinge separating two displays, NO thick white plastic chassis, NO keyboard deck, NO detachable panel, NO raised physical controls. Show only minimal real hinge hardware at the two outer ends, guided by photos. The upper part of the screen displays a very simple warm coral-orange stylized game landscape with a small sun, a few bold geometric hills and one simple tiny pixel-like hero silhouette. The lower part of the SAME glass display shows a refined, FLAT 3DS-inspired virtual controller skin: charcoal display surface, a slim pale-white graphic inset for the center touch screen, one flat pale-gray circle pad ring on the left, and four small flat red/yellow/blue/green touch circles on the right. All controls are flat pixels beneath glass with ZERO button thickness; a subtle continuous reflection should pass over them to establish that they are onscreen. The lower touch-screen center is dark with a small simple warm-orange geometric symbol. Simplify to the few bold recognizable elements appropriate for 60px icon size. Strong one-object silhouette, real Apple-style Duo form and materials, cool silver frame plus black glass plus coral orange, restrained natural highlights, precise elegant edges, slight asymmetry, object occupies roughly 84 percent of square with safe space around corners for iOS system masking. Crisp crafted icon illustration, no busy photo environment. Remove hands, people, tables, weather widgets, app grids, clocks, all text, status bars, cameras, logos and wordmarks from the references. NO blue halo, NO neon glow, NO separate rounded-square icon border. Output a single 1:1 square image."
+}
