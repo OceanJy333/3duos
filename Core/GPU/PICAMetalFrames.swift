@@ -102,7 +102,7 @@ extension PICAMetalBackend {
             frame.jitter = SIMD2(flip * shift.y / Float(scaleY), -shift.x / Float(scaleX))
         }
         commandBuffer.addCompletedHandler { _ in publish(frame) }
-        submit()
+        send()
         return true
     }
 

@@ -140,7 +140,7 @@ final class PICAMetalBackend: PICAPixelBackend {
         let vertexBytes = mesh.attributes.count * 16, indexBytes = mesh.indices.count * 4, programBytes = PICAShaderProgram.size * 8
         // Worst case incl. program and both tables (alignment padding included); a full arena starts the next one, which re-copies them.
         let needed = ((vertexBytes + 255) & ~255) + ((indexBytes + 255) & ~255) + programBytes + 24 * 256 * 4 + 512
-        if arenaOffset + needed > arena.length { submit() }
+        if arenaOffset + needed > arena.length { send() }
         if needed > arena.length { arenas[arenaIndex].buffer = device.makeBuffer(length: needed, options: .storageModeShared)! }
         let tables = state.lighting.enabled && lutOffset < 0 ? 24 * 256 * 4 : 0, fogTable = state.fog.enabled && fogOffset < 0 ? 512 : 0
         if encoder == nil || encoderTargets.0 !== colorTarget || encoderTargets.1 !== depthTarget { beginEncoder(colorTarget, depthTarget) }
@@ -291,9 +291,13 @@ final class PICAMetalBackend: PICAPixelBackend {
         t.stale = false
     }
 
+    // The end of a command list commits nothing: every submission is a driver call and a frame spans several lists. The
+    // work goes to the GPU with the frame's display transfer (`send`), when an arena fills, or at `finish`.
+    func submit() {}
+
     // Commits the queued GPU work without waiting for it. Native write-back copies are added only for `finish`: the game
     // rarely reads its render targets back, and the displayed frame comes straight from the GPU targets.
-    func submit() { commit(writeBack: false) }
+    func send() { commit(writeBack: false) }
 
     private func commit(writeBack: Bool) {
         guard let commandBuffer else { return }

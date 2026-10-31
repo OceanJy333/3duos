@@ -57,6 +57,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         becomeFirstResponder()
+        MetalFXBench.runIfRequested()
         // TDS_OPEN=1 opens the selected game at launch, for scripted checks (see TDS_INPUT in GameRunner).
         if runner == nil, ProcessInfo.processInfo.environment["TDS_OPEN"] != nil { openSelected() }
         updateConsoleOrientation()
@@ -177,6 +178,7 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         let paused = inLibrary || consolePresentation?.isSuspended == true
         runner?.setSuspended(paused)
         if paused { runner?.releaseInput() }
+        UIApplication.shared.isIdleTimerDisabled = runner != nil && !paused   // play has no touches during cutscenes
     }
 
     private func openSelected() {

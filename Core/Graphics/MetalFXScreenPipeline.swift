@@ -55,6 +55,17 @@ kernel void estimateMotion(texture2d<float, access::read> current [[texture(0)]]
     }
     motion.write(float4(float2(vector), 0, 0), gid);
 }
+// The frame a quarter interval after `earlier` and before `later` (half an interval apart): each warped a quarter of
+// the exact motion toward it, then averaged. `motion` is previous minus current position in input pixels.
+kernel void warpQuarter(texture2d<float> earlier [[texture(0)]], texture2d<float> later [[texture(1)]],
+                        texture2d<float> motion [[texture(2)]], texture2d<float, access::write> out [[texture(3)]],
+                        uint2 gid [[thread_position_in_grid]]) {
+    if (gid.x >= out.get_width() || gid.y >= out.get_height()) return;
+    constexpr sampler s(filter::linear, address::clamp_to_edge);
+    float2 uv = (float2(gid) + 0.5) / float2(out.get_width(), out.get_height());
+    float2 shift = 0.25 * motion.sample(s, uv).xy / float2(motion.get_width(), motion.get_height());
+    out.write(0.5 * (earlier.sample(s, uv + shift) + later.sample(s, uv - shift)), gid);
+}
 """
 
 #if canImport(MetalFX)
@@ -75,7 +86,7 @@ final class MetalFXScreenPipeline {
     private let motion: MTLTexture?
     private let depth: MTLTexture?
     private let reactive: MTLTexture?
-    private let motionPipeline: MTLComputePipelineState
+    private let motionPipeline: MTLComputePipelineState, warpPipeline: MTLComputePipelineState
     private var encodeScaler: (MTLCommandBuffer, Bool) -> Void = { _, _ in }
     private var encodeInterpolator: ((MTLCommandBuffer, Bool) -> Void)?
     private var frameIndex = 0
@@ -94,8 +105,11 @@ final class MetalFXScreenPipeline {
         self.width = width
         self.height = height
         let library = try device.makeLibrary(source: kernelSource, options: nil)
-        guard let function = library.makeFunction(name: "estimateMotion") else { throw MetalFXError.resourceFailed("motion kernel") }
+        guard let function = library.makeFunction(name: "estimateMotion"), let warp = library.makeFunction(name: "warpQuarter") else {
+            throw MetalFXError.resourceFailed("kernels")
+        }
         motionPipeline = try device.makeComputePipelineState(function: function)
+        warpPipeline = try device.makeComputePipelineState(function: warp)
 
         func texture(_ format: MTLPixelFormat, _ w: Int, _ h: Int, _ usage: MTLTextureUsage,
                      _ storage: MTLStorageMode = .shared) throws -> MTLTexture {
@@ -153,8 +167,10 @@ final class MetalFXScreenPipeline {
         (self.motion, self.depth, self.reactive) = (motion, depth, reactive)
 
         if interpolates {
-            // MetalFX only makes the frame halfway between two successive inputs. At 4x a second interpolator sees the
-            // 60 fps stream previous, half, current: halfway again gives the quarters, each step with half the motion.
+            // MetalFX only makes the frame halfway between two successive inputs. At 4x the quarters come from warping the
+            // neighbouring frames along the renderer's exact motion: a MetalFX interpolator per quarter cost ~3.8 ms of the
+            // phone's GPU each, more than the game's own rendering in busy scenes; the warp costs a fraction of that, and each
+            // quarter is on screen for one 120 Hz refresh between two MetalFX frames.
             guard MTLFXFrameInterpolatorDescriptor.supportsDevice(device) else { throw MetalFXError.unsupported("Frame Interpolation") }
             func interpolator(linkedTo scaler: (any MTLFXFrameInterpolatableScaler)?) throws -> MTLFXFrameInterpolator {
                 let f = MTLFXFrameInterpolatorDescriptor()
@@ -167,8 +183,9 @@ final class MetalFXScreenPipeline {
                 return made
             }
             let half = try interpolator(linkedTo: scaler)
-            let quarter = frameMultiple == 4 ? try interpolator(linkedTo: nil) : nil
-            let outputs = try (0..<frameMultiple - 1).map { _ in try texture(.rgba8Unorm, outWidth, outHeight, half.outputTextureUsage.union(half.colorTextureUsage), .private) }
+            let outputs = try (0..<frameMultiple - 1).map { _ in
+                try texture(.rgba8Unorm, outWidth, outHeight, half.outputTextureUsage.union(half.colorTextureUsage).union(.shaderWrite), .private)
+            }
             let previousUpscaled = try texture(.rgba8Unorm, outWidth, outHeight, half.colorTextureUsage, .private)
             (phases, previousOutput) = (outputs, previousUpscaled)
             let current = output, mid = outputs[outputs.count / 2]
@@ -186,9 +203,16 @@ final class MetalFXScreenPipeline {
                     i.encode(commandBuffer: commandBuffer)
                 }
                 run(half, from: previousUpscaled, to: current, into: mid, motionScale: 1, interval: 1 / framesPerSecond, reset: reset)
-                guard let quarter else { return }
-                run(quarter, from: previousUpscaled, to: mid, into: outputs[0], motionScale: 0.5, interval: 0.5 / framesPerSecond, reset: reset)
-                run(quarter, from: mid, to: current, into: outputs[2], motionScale: 0.5, interval: 0.5 / framesPerSecond, reset: false)
+                guard outputs.count == 3, let encoder = commandBuffer.makeComputeCommandEncoder() else { return }
+                encoder.waitForFence(fence!)
+                encoder.setComputePipelineState(warpPipeline)
+                encoder.setTexture(motion, index: 2)
+                for (earlier, later, out) in [(previousUpscaled, mid, outputs[0]), (mid, current, outputs[2])] {
+                    encoder.setTexture(earlier, index: 0); encoder.setTexture(later, index: 1); encoder.setTexture(out, index: 3)
+                    encoder.dispatchThreads(MTLSize(width: outWidth, height: outHeight, depth: 1), threadsPerThreadgroup: MTLSize(width: 16, height: 16, depth: 1))
+                }
+                encoder.updateFence(fence!)
+                encoder.endEncoding()
             }
         } else {
             (phases, previousOutput) = ([], nil)
@@ -249,7 +273,7 @@ final class MetalFXScreenPipeline {
         encodeScaler(commandBuffer, frameIndex == 0)
         encodeInterpolator?(commandBuffer, frameIndex == 0)
         if let previous, let blit = commandBuffer.makeBlitCommandEncoder() {
-            blit.copy(from: color, to: previous)
+            if !hasRealMotion { blit.copy(from: color, to: previous) }   // only block matching reads it
             if let previousOutput { blit.copy(from: output, to: previousOutput) }
             blit.endEncoding()
         }

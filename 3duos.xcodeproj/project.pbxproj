@@ -75,6 +75,7 @@
 		A95EF920B13ABF7DB5CB9694 /* PICADrawState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0E75DE40C89A7A2BB115227 /* PICADrawState.swift */; };
 		AFA9400E57F004FCAE1B4D91 /* SVCSystem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00EC4D30CB932B94957F5A00 /* SVCSystem.swift */; };
 		B0B6F916C66D1B28EEE9C136 /* PICAFragment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4088259D1963EBAA599DB6F1 /* PICAFragment.swift */; };
+		B72FAC82F24BCB453FC40EA8 /* MetalFXBench.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFA4C7E831AE6ACC21D48D3 /* MetalFXBench.swift */; };
 		B9F58C639AF40AB6B081A833 /* AudioMixer.swift in Sources */ = {isa = PBXBuildFile; fileRef = B610C1DC8389A53DB89A08B1 /* AudioMixer.swift */; };
 		BA4CE8BB0D9626B3B7E8ED06 /* PICAMetalLighting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0989786F5A0440A1F5B5C652 /* PICAMetalLighting.swift */; };
 		BB1F4DE3C1E2FAA604A8727E /* FatalErrorService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39771B522D6DA1485D1278D3 /* FatalErrorService.swift */; };
@@ -173,6 +174,7 @@
 		CCD29E7F1C3EAAAFA1695F0E /* PICAClipper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAClipper.swift; sourceTree = "<group>"; };
 		CE9C52C54929C594510A1A0C /* CartridgeProgram.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CartridgeProgram.swift; sourceTree = "<group>"; };
 		CF3A38DB132461ADF670C304 /* RegisterFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterFile.swift; sourceTree = "<group>"; };
+		CFFA4C7E831AE6ACC21D48D3 /* MetalFXBench.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetalFXBench.swift; sourceTree = "<group>"; };
 		D0E54370F0E659D41C1790EF /* ARM11Transfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Transfer.swift; sourceTree = "<group>"; };
 		D11376DD3F386A4398CEC71D /* PICAVertexProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAVertexProcessor.swift; sourceTree = "<group>"; };
 		D23C8FE26DC67CA2DFD0EBF8 /* Y2RService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Y2RService.swift; sourceTree = "<group>"; };
@@ -315,6 +317,7 @@
 				05FB9A43840E7571FB391985 /* GameRunner.swift */,
 				D96C3F7BE8819651E3526797 /* Info.plist */,
 				F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */,
+				CFFA4C7E831AE6ACC21D48D3 /* MetalFXBench.swift */,
 				1CC0C6DBC460805E7B04D658 /* RootController.swift */,
 				15A34B1AE207B7D17704AA38 /* TestFrame.swift */,
 			);
@@ -510,6 +513,7 @@
 				5172DC8C77B83B21A5D6BF20 /* Kernel.swift in Sources */,
 				14793A759414E204F41EA4C5 /* KernelObjects.swift in Sources */,
 				14F39575E336000D61E7EE44 /* LibraryScreens.swift in Sources */,
+				B72FAC82F24BCB453FC40EA8 /* MetalFXBench.swift in Sources */,
 				08B075AECE777669829A7A3E /* MetalFXScreenPipeline.swift in Sources */,
 				9ADF427DB83DB7080826B59A /* MetalScreenPresenter.swift in Sources */,
 				CC8D5C3A311C864B809210E9 /* PICAClipper.swift in Sources */,

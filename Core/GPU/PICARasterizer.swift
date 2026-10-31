@@ -10,7 +10,7 @@ protocol PICAPixelBackend: AnyObject {
     func finish()
     // The renderer is about to rewrite the lighting or fog tables that queued draws point at.
     func tablesWillChange()
-    // Starts the queued work at the end of a command list; mirrors may stay behind until `finish`.
+    // A command list ended: the backend may start its queued work; mirrors may stay behind until `finish`.
     func submit()
 }
 
