@@ -55,16 +55,20 @@ kernel void estimateMotion(texture2d<float, access::read> current [[texture(0)]]
     }
     motion.write(float4(float2(vector), 0, 0), gid);
 }
-// The frame a quarter interval after `earlier` and before `later` (half an interval apart): each warped a quarter of
-// the exact motion toward it, then averaged. `motion` is previous minus current position in input pixels.
-kernel void warpQuarter(texture2d<float> earlier [[texture(0)]], texture2d<float> later [[texture(1)]],
-                        texture2d<float> motion [[texture(2)]], texture2d<float, access::write> out [[texture(3)]],
+// A quarter frame from one sharp frame: `source` shifted along the exact motion by `amount` frame intervals (+ toward the
+// past for the previous frame, - for the current one). One frame only, so wrong motion stretches an edge instead of
+// doubling it. The motion is looked up where the pixel sits in the current frame, refined once. `motion` is previous
+// minus current position in input pixels.
+kernel void warpQuarter(texture2d<float> source [[texture(0)]], texture2d<float> motion [[texture(2)]],
+                        texture2d<float, access::write> out [[texture(3)]], constant float2 &shift [[buffer(0)]],
                         uint2 gid [[thread_position_in_grid]]) {
     if (gid.x >= out.get_width() || gid.y >= out.get_height()) return;
     constexpr sampler s(filter::linear, address::clamp_to_edge);
     float2 uv = (float2(gid) + 0.5) / float2(out.get_width(), out.get_height());
-    float2 shift = 0.25 * motion.sample(s, uv).xy / float2(motion.get_width(), motion.get_height());
-    out.write(0.5 * (earlier.sample(s, uv + shift) + later.sample(s, uv - shift)), gid);
+    float2 texel = 1 / float2(motion.get_width(), motion.get_height());
+    float2 m = motion.sample(s, uv).xy * texel;
+    m = motion.sample(s, uv - shift.x * m).xy * texel;   // shift.x: how far back in the current frame the pixel lies
+    out.write(source.sample(s, uv + shift.y * m), gid);
 }
 """
 
@@ -168,7 +172,7 @@ final class MetalFXScreenPipeline {
 
         if interpolates {
             // MetalFX only makes the frame halfway between two successive inputs. At 4x the quarters come from warping the
-            // neighbouring frames along the renderer's exact motion: a MetalFX interpolator per quarter cost ~3.8 ms of the
+            // nearest real frame along the renderer's exact motion: a MetalFX interpolator per quarter cost ~3.8 ms of the
             // phone's GPU each, more than the game's own rendering in busy scenes; the warp costs a fraction of that, and each
             // quarter is on screen for one 120 Hz refresh between two MetalFX frames.
             guard MTLFXFrameInterpolatorDescriptor.supportsDevice(device) else { throw MetalFXError.unsupported("Frame Interpolation") }
@@ -207,8 +211,11 @@ final class MetalFXScreenPipeline {
                 encoder.waitForFence(fence!)
                 encoder.setComputePipelineState(warpPipeline)
                 encoder.setTexture(motion, index: 2)
-                for (earlier, later, out) in [(previousUpscaled, mid, outputs[0]), (mid, current, outputs[2])] {
-                    encoder.setTexture(earlier, index: 0); encoder.setTexture(later, index: 1); encoder.setTexture(out, index: 3)
+                // 1/4 from the previous frame, 3/4 from the current one: (offset of the pixel in the current frame, warp).
+                for (source, shift, out) in [(previousUpscaled, SIMD2<Float>(0.75, 0.25), outputs[0]), (current, SIMD2<Float>(0.25, -0.25), outputs[2])] {
+                    var shift = shift
+                    encoder.setTexture(source, index: 0); encoder.setTexture(out, index: 3)
+                    encoder.setBytes(&shift, length: 8, index: 0)
                     encoder.dispatchThreads(MTLSize(width: outWidth, height: outHeight, depth: 1), threadsPerThreadgroup: MTLSize(width: 16, height: 16, depth: 1))
                 }
                 encoder.updateFence(fence!)
