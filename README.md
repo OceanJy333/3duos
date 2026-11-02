@@ -41,13 +41,15 @@
 | 超分与插帧 | Off、Spatial、Temporal、Temporal + 2 倍 Frame Interpolation 四档；默认最后一档 |
 | 折叠交互 | 合盖显示外壳并暂停游戏；展开恢复同一个会话 |
 | 掌机外观 | 全白 XL 皮肤、加大上屏、彩色 ABXY、触控摇杆与按键反馈 |
-| 不同比例 | 普通 iPhone、iPad 和窄窗口竖屏完整显示机身；横屏双面板并排，避开安全区域；Duo 保持上下折叠布局 |
+| 不同比例 | Duo、长屏 iPhone、16:9 iPhone、iPad 各用固定比例机身图；屏幕、摇杆与按键按对应图片校准 |
 | 游戏库 | 导入解密游戏，读取标题、图标和产品码；HOME 返回游戏库后可继续游戏 |
 | 音频与存档 | DSP 音频通路、本地游戏存档 |
 
 当前主要用《塞尔达传说：时之笛 3D》验证，已在 iPhone Duo 真机、Duo 模拟器与 Mac Catalyst 上运行过。其他游戏尚未完成兼容性测试。
 
 默认显示链为 **60 Hz**。对 30 fps 游戏，2 倍插帧生成中间画面，目标是以 60 帧显示；游戏逻辑仍按自身帧率运行。上屏使用 Temporal 与插帧，下屏游戏界面使用 Spatial。具体效果取决于设备对 MetalFX 的支持。
+
+普通 iPhone 与 iPad 固定竖屏，按设备类型与屏幕比例选择整张皮肤。机身内部不做动态重排；同一皮肤中的图片、显示区和触控区域整体等比缩放。不同型号留白略有差异。
 
 ## 构建与运行
 
@@ -97,15 +99,15 @@ xcodebuild -project 3duos.xcodeproj -scheme 3duos \
 
 ### 打包 IPA 与发布
 
-本地生成未签名 Release IPA（含 CPU 和 16 种尺寸的布局检查）：
+本地生成未签名 Release IPA（含 CPU、4 套素材坐标及 7 种竖屏尺寸的检查）：
 
 ```sh
-bash scripts/build-ipa.sh 0.1.0 1
+bash scripts/build-ipa.sh 0.1.1 1
 ```
 
-输出为 `build/release/3duos-0.1.0-unsigned.ipa` 及对应的 SHA-256 文件。
+输出为 `build/release/3duos-0.1.1-unsigned.ipa` 及对应的 SHA-256 文件。
 
-GitHub Actions 使用 Xcode 27.2 构建，无需保存开发者证书。手动运行 **Build IPA** 可下载构建产物；推送 `v0.1.0` 这样的版本标签，会自动构建并发布预览 Release。变更说明见 [本版说明](docs/RELEASE.md)。
+GitHub Actions 使用 Xcode 27.2 构建，无需保存开发者证书。手动运行 **Build IPA** 可下载构建产物；推送 `v0.1.1` 这样的版本标签，会自动构建并发布预览 Release。变更说明见 [本版说明](docs/RELEASE.md)。
 
 ## 导入与操作
 

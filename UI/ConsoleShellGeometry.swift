@@ -1,58 +1,67 @@
-// Input: available viewport and measured coordinates on the all-white XL bitmap.
-// Output: panel, screen and control frames using one shared coordinate mapping.
-// Pos: adaptive console layout, independent of UIKit and the emulator core.
+// Input: a selected fixed skin and the available drawing rectangle.
+// Output: image, screen and touch frames transformed together.
+// Pos: fixed-profile console rendering; screen pixels keep native LCD proportions.
 import Foundation
 import CoreGraphics
 
 struct ConsoleShellGeometry {
-    static let imageSize = CGSize(width: 1052, height: 1495)
-    static let splitY: CGFloat = 709
-    let upperPanel: CGRect
-    let lowerPanel: CGRect
+    let profile: ConsoleSkinProfile
+    let area: CGRect
 
-    init(in viewport: CGRect, spread: Bool) {
-        func fit(_ size: CGSize, in rect: CGRect) -> CGRect {
-            let scale = min(rect.width / size.width, rect.height / size.height)
-            let fitted = CGSize(width: size.width * scale, height: size.height * scale)
-            return CGRect(x: rect.midX - fitted.width / 2, y: rect.midY - fitted.height / 2,
-                          width: fitted.width, height: fitted.height)
-        }
-        if spread {
-            let gap: CGFloat = viewport.width >= 900 ? 24 : 12
-            let width = (viewport.width - gap) / 2
-            upperPanel = fit(CGSize(width: Self.imageSize.width, height: Self.splitY),
-                             in: CGRect(x: viewport.minX, y: viewport.minY, width: width, height: viewport.height))
-            lowerPanel = fit(CGSize(width: Self.imageSize.width, height: Self.imageSize.height - Self.splitY),
-                             in: CGRect(x: viewport.minX + width + gap, y: viewport.minY, width: width, height: viewport.height))
-        } else {
-            let area = fit(Self.imageSize, in: viewport)
-            let height = area.height * Self.splitY / Self.imageSize.height
-            upperPanel = CGRect(x: area.minX, y: area.minY, width: area.width, height: height)
-            lowerPanel = CGRect(x: area.minX, y: area.minY + height, width: area.width, height: area.height - height)
-        }
+    init(profile: ConsoleSkinProfile, in viewport: CGRect) {
+        self.profile = profile
+        let sx = viewport.width / profile.size.width, sy = viewport.height / profile.size.height
+        let scale = profile.asset == ConsoleSkinProfile.duo.asset ? max(sx, sy) : min(sx, sy)
+        let size = CGSize(width: profile.size.width * scale, height: profile.size.height * scale)
+        area = CGRect(x: viewport.midX - size.width / 2, y: viewport.midY - size.height / 2,
+                      width: size.width, height: size.height)
     }
 
-    private func imageRect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> CGRect {
-        let lower = y >= Self.splitY
-        let panel = lower ? lowerPanel : upperPanel
-        let scale = panel.width / Self.imageSize.width
-        return CGRect(x: panel.minX + x * scale, y: panel.minY + (y - (lower ? Self.splitY : 0)) * scale,
-                      width: width * scale, height: height * scale)
+    private func map(_ rect: CGRect) -> CGRect {
+        let scale = area.width / profile.size.width
+        return CGRect(x: area.minX + rect.minX * scale, y: area.minY + rect.minY * scale,
+                      width: rect.width * scale, height: rect.height * scale)
+    }
+    private func lcd(_ slot: CGRect, ratio: CGFloat) -> CGRect {
+        let rect = map(slot)
+        let width = min(rect.width, rect.height * ratio)
+        let height = width / ratio
+        return CGRect(x: rect.midX - width / 2, y: rect.midY - height / 2, width: width, height: height)
     }
 
-    var topScreen: CGRect { imageRect(75, 96, 900, 540) }
-    // Keep the 320:240 LCD undistorted inside the taller skin aperture.
-    var bottomScreen: CGRect { imageRect(215, 847.5, 620, 465) }
-    var circlePad: CGRect { imageRect(28, 878, 164, 174) }
-    var circlePadTouch: CGRect { imageRect(28, 815, 186, 270) }
-    var cStick: CGRect { imageRect(877, 852, 73, 74) }
-    var dpad: [CGRect] { [imageRect(85, 1083, 48, 44), imageRect(44, 1127, 42, 50),
-                         imageRect(132, 1127, 43, 50), imageRect(85, 1177, 48, 47)] }
-    var faceButtons: [CGRect] { [imageRect(913, 938, 63, 64), imageRect(858, 998, 63, 63),
-                                imageRect(967, 998, 63, 63), imageRect(913, 1058, 63, 64)] }
-    var shoulders: [CGRect] { [imageRect(0, 750, 100, 54), imageRect(951, 750, 100, 54),
-                              imageRect(100, 750, 100, 54), imageRect(851, 750, 100, 54)] }
-    var select: CGRect { imageRect(252, 1359, 164, 57) }
-    var menu: CGRect { imageRect(463, 1359, 124, 57) }
-    var start: CGRect { imageRect(634, 1359, 163, 57) }
+    var topAperture: CGRect { map(profile.top) }
+    var bottomAperture: CGRect { map(profile.bottom) }
+    var topScreen: CGRect { lcd(profile.top, ratio: 5.0 / 3) }
+    var bottomScreen: CGRect {
+        profile.asset == ConsoleSkinProfile.duo.asset ? bottomAperture : lcd(profile.bottom, ratio: 4.0 / 3)
+    }
+    var circlePad: CGRect { map(profile.pad) }
+    var circlePadTouch: CGRect {
+        profile.asset == ConsoleSkinProfile.duo.asset
+            ? map(CGRect(x: 28, y: 815, width: 186, height: 270)) : circlePad.insetBy(dx: -8, dy: -12)
+    }
+    var cStick: CGRect { map(profile.cStick) }
+    var dpad: [CGRect] {
+        if profile.asset == ConsoleSkinProfile.duo.asset {
+            return [CGRect(x: 85, y: 1083, width: 48, height: 44),
+                    CGRect(x: 44, y: 1127, width: 42, height: 50),
+                    CGRect(x: 132, y: 1127, width: 43, height: 50),
+                    CGRect(x: 85, y: 1177, width: 48, height: 47)].map(map)
+        }
+        let r = profile.cross, w = r.width / 3, h = r.height / 3
+        return [CGRect(x: r.minX + w, y: r.minY, width: w, height: h),
+                CGRect(x: r.minX, y: r.minY + h, width: w, height: h),
+                CGRect(x: r.minX + 2 * w, y: r.minY + h, width: w, height: h),
+                CGRect(x: r.minX + w, y: r.minY + 2 * h, width: w, height: h)].map(map)
+    }
+    var faceButtons: [CGRect] { profile.faces.map(map) }
+    var shoulders: [CGRect] {
+        [CGRect(x: 0, y: profile.hingeY, width: 100, height: 54),
+         CGRect(x: profile.size.width - 100, y: profile.hingeY, width: 100, height: 54),
+         CGRect(x: 100, y: profile.hingeY, width: 100, height: 54),
+         CGRect(x: profile.size.width - 200, y: profile.hingeY, width: 100, height: 54)].map(map)
+    }
+    var select: CGRect { map(profile.footer[0]) }
+    var menu: CGRect { map(profile.footer[1]) }
+    var start: CGRect { map(profile.footer[2]) }
 }

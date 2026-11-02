@@ -14,9 +14,11 @@ final class ConsoleShellView: UIView {
     var onMenu: (() -> Void)?
     var menuFrame: CGRect { geometry?.menu ?? bounds }
     private var geometry: ConsoleShellGeometry?
+    private let shellImage = UIImageView()
+    private let topBacking = UIView()
+    private let bottomBacking = UIView()
     var isFoldable = false { didSet { setNeedsLayout() } }
-    private let upperImage = UIImageView()
-    private let lowerImage = UIImageView()
+    private var skinAsset: String?
     private let stick = ConsoleCirclePad()
     private let cStick = ConsoleCirclePad()
     private var buttons: [UIButton] = []
@@ -27,14 +29,9 @@ final class ConsoleShellView: UIView {
         backgroundColor = .white
         clipsToBounds = true
         isMultipleTouchEnabled = true
-        if let image = UIImage(named: "New3DSWhiteFaceplateXLAllWhite")?.cgImage {
-            let split = CGFloat(image.height) * ConsoleShellGeometry.splitY / ConsoleShellGeometry.imageSize.height
-            upperImage.image = image.cropping(to: CGRect(x: 0, y: 0, width: image.width, height: Int(split)))
-                .map { UIImage(cgImage: $0) }
-            lowerImage.image = image.cropping(to: CGRect(x: 0, y: Int(split), width: image.width, height: image.height - Int(split)))
-                .map { UIImage(cgImage: $0) }
-        }
-        for image in [upperImage, lowerImage] { image.contentMode = .scaleToFill; addSubview(image) }
+        shellImage.contentMode = .scaleToFill
+        addSubview(shellImage)
+        for backing in [topBacking, bottomBacking] { backing.backgroundColor = .white; addSubview(backing) }
         stick.configure(image: UIImage(named: "New3DSWhitePadKnob"), size: 0.7)
         cStick.configure(image: UIImage(named: "New3DSWhiteCStickKnob"), size: 0.8)
         topScreen.backgroundColor = .black
@@ -84,7 +81,7 @@ final class ConsoleShellView: UIView {
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let hit = super.hitTest(point, with: event)
         guard hit === self || hit is ConsoleButton else { return hit }
-        // Small hardware artwork keeps its exact position; enlarged touch targets choose the closest key.
+        // Enlarged touch targets choose the closest key while artwork stays fixed.
         return (buttons + [menu]).filter { $0.point(inside: convert(point, to: $0), with: event) }
             .min { hypot($0.center.x - point.x, $0.center.y - point.y)
                 < hypot($1.center.x - point.x, $1.center.y - point.y) } ?? hit
@@ -93,13 +90,17 @@ final class ConsoleShellView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         let viewport = isFoldable ? bounds : bounds.inset(by: safeAreaInsets)
-        let next = ConsoleShellGeometry(in: viewport, spread: !isFoldable && viewport.width > viewport.height)
+        let profile = ConsoleSkinProfile.choose(isFoldable: isFoldable,
+            isPad: traitCollection.userInterfaceIdiom == .pad, ratio: bounds.width / max(1, bounds.height))
+        let next = ConsoleShellGeometry(profile: profile, in: viewport)
+        if skinAsset != profile.asset { shellImage.image = UIImage(named: profile.asset); skinAsset = profile.asset }
         if geometry?.bottomScreen != next.bottomScreen { bottomScreen.cancelTouch() }
         if geometry?.circlePad != next.circlePad { stick.cancelTouch() }
         if geometry?.cStick != next.cStick { cStick.cancelTouch() }
         geometry = next
-        upperImage.frame = next.upperPanel
-        lowerImage.frame = next.lowerPanel
+        shellImage.frame = next.area
+        topBacking.frame = next.topAperture
+        bottomBacking.frame = next.bottomAperture
         topScreen.frame = next.topScreen
         bottomScreen.frame = next.bottomScreen
         stick.frame = next.circlePad

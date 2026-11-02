@@ -4,13 +4,13 @@
 # Pos: shared local/GitHub Actions release packaging entry.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version="${1:-0.1.0}"
+version="${1:-0.1.1}"
 build_number="${2:-1}"
 output="build/release"
 
 xcodegen generate
 mkdir -p "$output"
-xcrun swiftc UI/ConsoleShellGeometry.swift Tests/Layout/main.swift -o "$output/layout-check"
+xcrun swiftc UI/ConsoleSkinProfile.swift UI/ConsoleShellGeometry.swift Tests/Layout/main.swift -o "$output/layout-check"
 "$output/layout-check"
 xcrun swiftc Core/CPU/*.swift Tests/CPU/main.swift -o "$output/cpu-check"
 "$output/cpu-check"

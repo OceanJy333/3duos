@@ -43,6 +43,7 @@
 		56E0785538BDF1C3621A7C8D /* PICAShaderUnit.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EBBD317D939B16A8BFA1070 /* PICAShaderUnit.swift */; };
 		579E0F7E9EA5B57F918F038B /* TestFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15A34B1AE207B7D17704AA38 /* TestFrame.swift */; };
 		5FEE835A866A5D94278447CB /* RegisterFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF3A38DB132461ADF670C304 /* RegisterFile.swift */; };
+		61836CA5216DFA040C9E7EA9 /* ConsoleSkinProfile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 423D73BF08487CE6C37A751D /* ConsoleSkinProfile.swift */; };
 		62B8FF17F86DCCB08130B482 /* FSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1262A74924A46B33EFB78690 /* FSService.swift */; };
 		6481D20DD9FE9123B914530A /* ARM11Transfer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0E54370F0E659D41C1790EF /* ARM11Transfer.swift */; };
 		65C6B19068473A93840BEEE1 /* GSPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3503B0CAF33B90C839753B8C /* GSPService.swift */; };
@@ -129,6 +130,7 @@
 		3B230414BF222EF4225779F2 /* ARM11Multiply.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11Multiply.swift; sourceTree = "<group>"; };
 		3BD9C37BC36267F935E1C1DC /* PICAVertexInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAVertexInput.swift; sourceTree = "<group>"; };
 		4088259D1963EBAA599DB6F1 /* PICAFragment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAFragment.swift; sourceTree = "<group>"; };
+		423D73BF08487CE6C37A751D /* ConsoleSkinProfile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleSkinProfile.swift; sourceTree = "<group>"; };
 		42C23FBAE84DB78D020174D5 /* CityHash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CityHash.swift; sourceTree = "<group>"; };
 		44A6655AE065DE84B707EF6D /* GPUTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPUTransfer.swift; sourceTree = "<group>"; };
 		465E9C8B0AB9C744D663334E /* PICAMetalVertexCompiler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalVertexCompiler.swift; sourceTree = "<group>"; };
@@ -202,6 +204,7 @@
 				FE58235DEF96D68C8DF7BE26 /* ConsolePresentation.swift */,
 				C212AEB2D2450CE568F4CF22 /* ConsoleShellGeometry.swift */,
 				9D89040322F81DD1378EC1F2 /* ConsoleShellView.swift */,
+				423D73BF08487CE6C37A751D /* ConsoleSkinProfile.swift */,
 				9FEF5F37B3A0CF7467F7617F /* LibraryScreens.swift */,
 			);
 			path = UI;
@@ -502,6 +505,7 @@
 				E816B46A147002A0BCC45445 /* ConsolePresentation.swift in Sources */,
 				8D58A6EB2F93030BE6CECA35 /* ConsoleShellGeometry.swift in Sources */,
 				677988445A52908CFA58133B /* ConsoleShellView.swift in Sources */,
+				61836CA5216DFA040C9E7EA9 /* ConsoleSkinProfile.swift in Sources */,
 				2AAF2A2F394E61F5E08F64F1 /* DSPService.swift in Sources */,
 				10F21C42BB0FCD1CDB6FDF5B /* DuosAppDelegate.swift in Sources */,
 				62B8FF17F86DCCB08130B482 /* FSService.swift in Sources */,
@@ -583,7 +587,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.ocean33.3duos.lab;
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;
@@ -726,7 +730,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 0.1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.ocean33.3duos.lab;
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;

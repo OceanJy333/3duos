@@ -2,7 +2,20 @@
 
 使用内置 image_gen，参考项目现有白色 XL 皮肤生成。外盖横向、去掉双摄；内外素材均补齐机壳外侧黑底，形成矩形满版纹理。
 
-当前使用全白 XL 内壳，上屏渲染区域保持 900 × 540，以 5:3 显示游戏。上半面板、转轴、空屏均为白色；ABXY 改为蓝绿红黄。触控坐标按当前 1052 × 1495 位图校准，统一在 `ConsoleShellGeometry` 维护。
+当前使用全白 XL 内壳，上屏渲染区域保持 900 × 540，以 5:3 显示游戏。上半面板、转轴、空屏均为白色；ABXY 改为蓝绿红黄。触控坐标按当前 1052 × 1495 位图校准，统一在 `ConsoleSkinProfile` 维护。
+
+## 固定比例皮肤
+
+内置 image_gen 生成三张比例素材，不拆面板、不动态重排。每张图片的屏幕和控件坐标保存在 `UI/ConsoleSkinProfile.swift`，由 `ConsoleShellGeometry` 整体等比变换。
+
+| 用途 | 素材路径 | 像素 |
+| --- | --- | --- |
+| Duo | `App/Assets.xcassets/New3DSWhiteFaceplateXLAllWhite.imageset/new3ds-white-xl-all-white.png` | 1052 × 1495 |
+| 长屏 iPhone | `App/Assets.xcassets/White3DSTallPhone.imageset/skin.png` | 830 × 1896 |
+| 16:9 iPhone | `App/Assets.xcassets/White3DSClassicPhone.imageset/skin.png` | 941 × 1672 |
+| iPad | `App/Assets.xcassets/White3DSTablet.imageset/skin.png` | 1086 × 1448 |
+
+普通手机按屏幕宽高比 0.51 分为长屏和 16:9 两组；iPad 使用平板图，检测到折叠转轴使用 Duo 图。生图完整提示词见 `Design/WhiteEdition/fixed-proportions-generation.json`。
 
 ## 全白版本与图标
 
