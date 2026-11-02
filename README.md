@@ -14,6 +14,8 @@
 
 发布的 IPA 为未签名版本，需要用自己的 Apple ID 和签名工具安装。最低系统为 iOS/iPadOS 26。
 
+全能签导入报 ZIP 错误时，可测试 [完整签名结构的重签包](https://github.com/OceanJy333/3duos/releases/download/v0.1.2/3duos-0.1.2-resign.ipa)（约 9.3 MB），导入后仍需自己的证书重新签名。该包使用零压缩 ZIP，手机端导入结果待验证。
+
 ## 看看效果
 
 <table>
@@ -114,6 +116,12 @@ python3 scripts/check-ipa.py build/release/3duos-0.1.2-unsigned.ipa
 ```
 
 GitHub Actions 使用 Xcode 27.2 构建，无需保存开发者证书。手动运行 **Build IPA** 可下载构建产物；推送 `v0.1.2` 这样的版本标签，会自动构建并发布预览 Release。变更说明见 [本版说明](docs/RELEASE.md)。
+
+已有 Xcode 导出的正式签名 IPA 时，可以保留完整签名结构并生成零压缩的重签测试包：
+
+```sh
+bash scripts/package-resign-ipa.sh /path/to/exported.ipa build/release/3duos-resign.ipa
+```
 
 ## 导入与操作
 
