@@ -13,7 +13,7 @@ final class DuosAppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication,
                      supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
-        .portrait
+        window?.rootViewController?.supportedInterfaceOrientations ?? .all
     }
 }
 

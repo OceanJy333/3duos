@@ -5,33 +5,6 @@
 import MetalKit
 import UIKit
 
-struct ConsoleShellGeometry {
-    // Coordinates are measured on the active all-white bitmap, not the earlier black-bezel skin.
-    static let imageSize = CGSize(width: 1052, height: 1495)
-    let area: CGRect
-    private func imageRect(_ x: CGFloat, _ y: CGFloat, _ width: CGFloat, _ height: CGFloat) -> CGRect {
-        CGRect(x: area.minX + x / Self.imageSize.width * area.width,
-               y: area.minY + y / Self.imageSize.height * area.height,
-               width: width / Self.imageSize.width * area.width, height: height / Self.imageSize.height * area.height)
-    }
-    var topScreen: CGRect { imageRect(75, 96, 900, 540) }
-    var bottomScreen: CGRect { imageRect(215, 828, 620, 504) }
-    var circlePad: CGRect { imageRect(28, 878, 164, 174) }
-    // The pad reads movement from where the thumb lands, so its touch area reaches into the free faceplate above and to
-    // the right: the thumb can rest away from the phone's edge and still push fully left.
-    var circlePadTouch: CGRect { imageRect(28, 815, 186, 270) }
-    var cStick: CGRect { imageRect(877, 852, 73, 74) }
-    var dpad: [CGRect] { [imageRect(85, 1083, 48, 44), imageRect(44, 1127, 42, 50),
-                            imageRect(132, 1127, 43, 50), imageRect(85, 1177, 48, 47)] }
-    var faceButtons: [CGRect] { [imageRect(913, 938, 63, 64), imageRect(858, 998, 63, 63),
-                                   imageRect(967, 998, 63, 63), imageRect(913, 1058, 63, 64)] }
-    var shoulders: [CGRect] { [imageRect(0, 750, 100, 54), imageRect(951, 750, 100, 54),
-                                imageRect(100, 750, 100, 54), imageRect(851, 750, 100, 54)] }
-    var select: CGRect { imageRect(252, 1359, 164, 57) }
-    var menu: CGRect { imageRect(463, 1359, 124, 57) }
-    var start: CGRect { imageRect(634, 1359, 163, 57) }
-}
-
 final class ConsoleShellView: UIView {
     let topScreen = MTKView()
     let bottomScreen = ConsoleTouchScreen()
@@ -41,7 +14,9 @@ final class ConsoleShellView: UIView {
     var onMenu: (() -> Void)?
     var menuFrame: CGRect { geometry?.menu ?? bounds }
     private var geometry: ConsoleShellGeometry?
-    private let shellImage = UIImageView(image: UIImage(named: "New3DSWhiteFaceplateXLAllWhite"))
+    var isFoldable = false { didSet { setNeedsLayout() } }
+    private let upperImage = UIImageView()
+    private let lowerImage = UIImageView()
     private let stick = ConsoleCirclePad()
     private let cStick = ConsoleCirclePad()
     private var buttons: [UIButton] = []
@@ -52,8 +27,14 @@ final class ConsoleShellView: UIView {
         backgroundColor = .white
         clipsToBounds = true
         isMultipleTouchEnabled = true
-        shellImage.contentMode = .scaleToFill
-        addSubview(shellImage)
+        if let image = UIImage(named: "New3DSWhiteFaceplateXLAllWhite")?.cgImage {
+            let split = CGFloat(image.height) * ConsoleShellGeometry.splitY / ConsoleShellGeometry.imageSize.height
+            upperImage.image = image.cropping(to: CGRect(x: 0, y: 0, width: image.width, height: Int(split)))
+                .map { UIImage(cgImage: $0) }
+            lowerImage.image = image.cropping(to: CGRect(x: 0, y: Int(split), width: image.width, height: image.height - Int(split)))
+                .map { UIImage(cgImage: $0) }
+        }
+        for image in [upperImage, lowerImage] { image.contentMode = .scaleToFill; addSubview(image) }
         stick.configure(image: UIImage(named: "New3DSWhitePadKnob"), size: 0.7)
         cStick.configure(image: UIImage(named: "New3DSWhiteCStickKnob"), size: 0.8)
         topScreen.backgroundColor = .black
@@ -100,19 +81,25 @@ final class ConsoleShellView: UIView {
         }
     }
 
+    override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
+        let hit = super.hitTest(point, with: event)
+        guard hit === self || hit is ConsoleButton else { return hit }
+        // Small hardware artwork keeps its exact position; enlarged touch targets choose the closest key.
+        return (buttons + [menu]).filter { $0.point(inside: convert(point, to: $0), with: event) }
+            .min { hypot($0.center.x - point.x, $0.center.y - point.y)
+                < hypot($1.center.x - point.x, $1.center.y - point.y) } ?? hit
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
-        let ratio = ConsoleShellGeometry.imageSize.width / ConsoleShellGeometry.imageSize.height
-        let width = max(bounds.width, bounds.height * ratio)
-        let height = width / ratio
-        let area = CGRect(x: bounds.midX - width / 2, y: bounds.midY - height / 2,
-                          width: width, height: height)
-        let next = ConsoleShellGeometry(area: area)
+        let viewport = isFoldable ? bounds : bounds.inset(by: safeAreaInsets)
+        let next = ConsoleShellGeometry(in: viewport, spread: !isFoldable && viewport.width > viewport.height)
         if geometry?.bottomScreen != next.bottomScreen { bottomScreen.cancelTouch() }
         if geometry?.circlePad != next.circlePad { stick.cancelTouch() }
         if geometry?.cStick != next.cStick { cStick.cancelTouch() }
         geometry = next
-        shellImage.frame = area
+        upperImage.frame = next.upperPanel
+        lowerImage.frame = next.lowerPanel
         topScreen.frame = next.topScreen
         bottomScreen.frame = next.bottomScreen
         stick.frame = next.circlePad

@@ -8,10 +8,12 @@ final class ConsolePresentation {
     private let lid = ConsoleLidView()
     private let onSuspension: (Bool) -> Void
     private var isClosed = false
+    private(set) var hasHinge = false
     private var isSceneActive = true
     private(set) var isSuspended = false
 
-    init(in host: UIView, shell: ConsoleShellView, onSuspension: @escaping (Bool) -> Void) {
+    init(in host: UIView, shell: ConsoleShellView, onHingeDetected: @escaping () -> Void,
+         onSuspension: @escaping (Bool) -> Void) {
         self.shell = shell
         self.onSuspension = onSuspension
         lid.frame = host.bounds
@@ -26,6 +28,11 @@ final class ConsolePresentation {
         if #available(iOS 27.1, *) {
             host.addInteraction(UIHingeInteraction { [weak self] _, update in
                 guard let self, let hinge = update.hinge, hinge.status != .unknown else { return }
+                if !self.hasHinge {
+                    self.hasHinge = true
+                    shell.isFoldable = true
+                    onHingeDetected()
+                }
                 // Nil updates occur during display handoff; keep the last known lid until a real status arrives.
                 let closed = hinge.status == .closed
                 guard self.isClosed != closed else { return }

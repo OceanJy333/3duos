@@ -140,6 +140,11 @@ final class ConsoleButton: UIButton {
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        bounds.insetBy(dx: min(0, (bounds.width - 44) / 2),
+                       dy: min(0, (bounds.height - 44) / 2)).contains(point)
+    }
+
     override func layoutSubviews() {
         super.layoutSubviews()
         pressLayer.bounds = bounds

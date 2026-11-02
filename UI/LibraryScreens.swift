@@ -90,14 +90,21 @@ final class LibraryScreens {
         test.tintColor = ink
         test.addAction(UIAction { [weak self] _ in self?.onTest?() }, for: .touchUpInside)
         effects.titleLabel?.font = .systemFont(ofSize: 10, weight: .semibold)
-        effects.titleLabel?.adjustsFontSizeToFitWidth = true
+        effects.titleLabel?.numberOfLines = 2
+        effects.titleLabel?.textAlignment = .center
         effects.tintColor = ink
         effects.addAction(UIAction { [weak self] _ in self?.onEffects?() }, for: .touchUpInside)
         open.setTitle("Open  ▶", for: .normal)
         open.titleLabel?.font = .systemFont(ofSize: 11, weight: .bold)
         open.tintColor = UIColor(red: 0.18, green: 0.48, blue: 0.42, alpha: 1)
         open.addAction(UIAction { [weak self] _ in self?.onOpen?() }, for: .touchUpInside)
-        let actions = UIStackView(arrangedSubviews: [importButton, test, effects, open])
+        let rows = [[importButton, test], [effects, open]].map { items in
+            let row = UIStackView(arrangedSubviews: items)
+            row.distribution = .fillEqually
+            return row
+        }
+        let actions = UIStackView(arrangedSubviews: rows)
+        actions.axis = .vertical
         actions.distribution = .fillEqually
         actions.backgroundColor = UIColor.white.withAlphaComponent(0.72)
         let bottomStack = UIStackView(arrangedSubviews: [bottomBar, scroll, actions])
@@ -105,7 +112,7 @@ final class LibraryScreens {
         pin(bottomStack, inside: bottom, inset: 0)
         libraryBottom = bottomStack
         bottomBar.heightAnchor.constraint(equalToConstant: 20).isActive = true
-        actions.heightAnchor.constraint(equalToConstant: 28).isActive = true
+        actions.heightAnchor.constraint(equalToConstant: 88).isActive = true
 
         for (label, screen) in [(bootTop, top), (bootBottom, bottom)] {
             label.textColor = ink
@@ -120,7 +127,7 @@ final class LibraryScreens {
     }
 
     func setEffectsTitle(_ title: String) {
-        effects.setTitle("MetalFX: \(title)", for: .normal)
+        effects.setTitle("MetalFX\n\(title)", for: .normal)
     }
 
     func update(games: [URL], selected: URL?, metadata: [URL: LibraryGameInfo]) {

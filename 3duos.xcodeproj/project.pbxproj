@@ -58,6 +58,7 @@
 		83E18202093563F5A962C4ED /* ARM11Saturate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110FAC969070A316C290C63B /* ARM11Saturate.swift */; };
 		8884B091FDC0BEAE94DA9611 /* PICAMetalBackend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C371F4A67FFFA16A121FF28 /* PICAMetalBackend.swift */; };
 		88A426D6BB7E6F2A68657990 /* ARM11Decode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 879D8A0C43CE3CD73982B6F2 /* ARM11Decode.swift */; };
+		8D58A6EB2F93030BE6CECA35 /* ConsoleShellGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = C212AEB2D2450CE568F4CF22 /* ConsoleShellGeometry.swift */; };
 		8F686A5148640ED17D7740BA /* PICACommandDecoder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DD0EF4EC6867D9783E3BE3F /* PICACommandDecoder.swift */; };
 		9392F22E63F434D91F31E7EE /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = F24F2BC1411C7477A8E3B217 /* LaunchScreen.storyboard */; };
 		93F54D85D85B3A9905BA7335 /* ARM11VFPData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05B75B143C145A3A680BCA74 /* ARM11VFPData.swift */; };
@@ -169,6 +170,7 @@
 		B86F08183C6D5861D983FA13 /* ARM11BlockTransfer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ARM11BlockTransfer.swift; sourceTree = "<group>"; };
 		C0E75DE40C89A7A2BB115227 /* PICADrawState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICADrawState.swift; sourceTree = "<group>"; };
 		C141618133AC491C4552C45D /* FramebufferDecoder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FramebufferDecoder.swift; sourceTree = "<group>"; };
+		C212AEB2D2450CE568F4CF22 /* ConsoleShellGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConsoleShellGeometry.swift; sourceTree = "<group>"; };
 		C4F60DE2EF7A74BB20EA748B /* PICARenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICARenderer.swift; sourceTree = "<group>"; };
 		CA120DFFF787EBCC9A57DCCD /* PICAMetalKernels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAMetalKernels.swift; sourceTree = "<group>"; };
 		CCD29E7F1C3EAAAFA1695F0E /* PICAClipper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PICAClipper.swift; sourceTree = "<group>"; };
@@ -198,6 +200,7 @@
 			children = (
 				A94B09397B0B01C297991211 /* ConsoleControls.swift */,
 				FE58235DEF96D68C8DF7BE26 /* ConsolePresentation.swift */,
+				C212AEB2D2450CE568F4CF22 /* ConsoleShellGeometry.swift */,
 				9D89040322F81DD1378EC1F2 /* ConsoleShellView.swift */,
 				9FEF5F37B3A0CF7467F7617F /* LibraryScreens.swift */,
 			);
@@ -497,6 +500,7 @@
 				34FCEEE2F5E44DB47C36DE41 /* ConsoleControls.swift in Sources */,
 				BDEC5FB45BDFF26E0B2E4CF7 /* ConsoleInput.swift in Sources */,
 				E816B46A147002A0BCC45445 /* ConsolePresentation.swift in Sources */,
+				8D58A6EB2F93030BE6CECA35 /* ConsoleShellGeometry.swift in Sources */,
 				677988445A52908CFA58133B /* ConsoleShellView.swift in Sources */,
 				2AAF2A2F394E61F5E08F64F1 /* DSPService.swift in Sources */,
 				10F21C42BB0FCD1CDB6FDF5B /* DuosAppDelegate.swift in Sources */,
@@ -572,12 +576,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				GCC_OPTIMIZATION_LEVEL = s;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.ocean33.3duos.lab;
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;
@@ -713,12 +719,14 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
 				GCC_OPTIMIZATION_LEVEL = s;
 				INFOPLIST_FILE = App/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
+				MARKETING_VERSION = 0.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.ocean33.3duos.lab;
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;

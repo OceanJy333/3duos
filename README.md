@@ -10,6 +10,10 @@
 
 3duos 围绕折叠屏重新做了一套掌机体验：合上是白色外盖，展开是 New 3DS XL 风格双屏，摇杆、按键和下屏都可以直接触控。CPU、系统服务和图形核心在本项目中独立实现，应用只链接 Apple 系统框架。
 
+**[下载预览版 IPA](https://github.com/OceanJy333/3duos/releases)** · [自动构建记录](https://github.com/OceanJy333/3duos/actions/workflows/release.yml)
+
+发布的 IPA 为未签名版本，需要用自己的 Apple ID 和签名工具安装。最低系统为 iOS/iPadOS 26。
+
 ## 看看效果
 
 <table>
@@ -37,6 +41,7 @@
 | 超分与插帧 | Off、Spatial、Temporal、Temporal + 2 倍 Frame Interpolation 四档；默认最后一档 |
 | 折叠交互 | 合盖显示外壳并暂停游戏；展开恢复同一个会话 |
 | 掌机外观 | 全白 XL 皮肤、加大上屏、彩色 ABXY、触控摇杆与按键反馈 |
+| 不同比例 | 普通 iPhone、iPad 和窄窗口竖屏完整显示机身；横屏双面板并排，避开安全区域；Duo 保持上下折叠布局 |
 | 游戏库 | 导入解密游戏，读取标题、图标和产品码；HOME 返回游戏库后可继续游戏 |
 | 音频与存档 | DSP 音频通路、本地游戏存档 |
 
@@ -89,6 +94,18 @@ xcodebuild -project 3duos.xcodeproj -scheme 3duos \
 ```
 
 工程也开启了 Mac Catalyst 支持，可在 Xcode 中选择对应的 My Mac 目标运行。
+
+### 打包 IPA 与发布
+
+本地生成未签名 Release IPA（含 CPU 和 16 种尺寸的布局检查）：
+
+```sh
+bash scripts/build-ipa.sh 0.1.0 1
+```
+
+输出为 `build/release/3duos-0.1.0-unsigned.ipa` 及对应的 SHA-256 文件。
+
+GitHub Actions 使用 Xcode 27.2 构建，无需保存开发者证书。手动运行 **Build IPA** 可下载构建产物；推送 `v0.1.0` 这样的版本标签，会自动构建并发布预览 Release。变更说明见 [本版说明](docs/RELEASE.md)。
 
 ## 导入与操作
 

@@ -29,8 +29,10 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     private var runningGame: URL?
     private var inLibrary = true   // the menu button pauses a running game here; opening it again resumes it
     private var consolePresentation: ConsolePresentation?
-    private let stage = UIView()   // everything on screen; kept portrait to the device whatever the scene orientation
-    override var supportedInterfaceOrientations: UIInterfaceOrientationMask { .portrait }
+    private let stage = UIView()
+    override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+        consolePresentation?.hasHinge == true ? .portrait : .all
+    }
     override var preferredInterfaceOrientationForPresentation: UIInterfaceOrientation { .portrait }
     override var prefersStatusBarHidden: Bool { true }
     override var prefersHomeIndicatorAutoHidden: Bool { true }
@@ -64,18 +66,21 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
     }
 
     func updateConsoleOrientation() {
-        guard let scene = view.window?.windowScene, scene.effectiveGeometry.interfaceOrientation != .portrait else { return }
+        setNeedsUpdateOfSupportedInterfaceOrientations()
+        guard consolePresentation?.hasHinge == true, let scene = view.window?.windowScene,
+              scene.effectiveGeometry.interfaceOrientation != .portrait else { return }
         scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait)) { error in
             NSLog("3duos console orientation: %@", error.localizedDescription)
         }
         view.setNeedsLayout()
     }
 
-    // Duo can hand a reopened scene over in landscape despite the portrait-only Info.plist. The stage then turns against the
-    // scene, so the console always stands upright along the phone's long side, like a rotation lock.
+    // Duo keeps its physical hinge between the screens; flat devices follow rotation and window size.
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
-        let angle: CGFloat = switch view.window?.windowScene?.effectiveGeometry.interfaceOrientation {
+        let orientation = consolePresentation?.hasHinge == true
+            ? view.window?.windowScene?.effectiveGeometry.interfaceOrientation : .portrait
+        let angle: CGFloat = switch orientation {
         case .landscapeRight: -.pi / 2
         case .landscapeLeft: .pi / 2
         case .portraitUpsideDown: .pi
@@ -95,7 +100,10 @@ final class RootController: UIViewController, UIDocumentPickerDelegate {
         shell.frame = stage.bounds
         shell.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         stage.addSubview(shell)
-        consolePresentation = ConsolePresentation(in: stage, shell: shell) { [weak self] suspended in
+        consolePresentation = ConsolePresentation(in: stage, shell: shell, onHingeDetected: { [weak self] in
+            self?.updateConsoleOrientation()
+            self?.view.setNeedsLayout()
+        }) { [weak self] suspended in
             self?.displayLink?.isPaused = suspended
             self?.updateRunnerPause()
         }
