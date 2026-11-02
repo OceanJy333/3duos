@@ -4,7 +4,7 @@
 # Pos: shared local/GitHub Actions release packaging entry.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-version="${1:-0.1.1}"
+version="${1:-0.1.2}"
 build_number="${2:-1}"
 output="build/release"
 
@@ -24,8 +24,10 @@ xcodebuild -project 3duos.xcodeproj -scheme 3duos -configuration Release \
 package="$(mktemp -d)"
 trap 'rm -rf "$package"' EXIT
 mkdir -p "$package/Payload"
-ditto 'build/ReleaseDerivedData/Build/Products/Release-iphoneos/3duos Lab.app' "$package/Payload/3duos.app"
+ditto --norsrc --noextattr 'build/ReleaseDerivedData/Build/Products/Release-iphoneos/3duos Lab.app' "$package/Payload/3duos.app"
 ipa="3duos-${version}-unsigned.ipa"
-ditto -c -k --sequesterRsrc --keepParent "$package/Payload" "$output/$ipa"
+(cd "$package" && zip -qry -X 3duos.ipa Payload)
+mv "$package/3duos.ipa" "$output/$ipa"
+python3 scripts/check-ipa.py "$output/$ipa"
 (cd "$output" && shasum -a 256 "$ipa" > "$ipa.sha256")
 echo "Created $output/$ipa (unsigned; personal signing required)"

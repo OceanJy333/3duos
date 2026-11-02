@@ -1,16 +1,13 @@
-# 3duos v0.1.1
+# 3duos v0.1.2
 
-- 新增长屏 iPhone、16:9 iPhone、iPad 三张 AI 生成的全白掌机皮肤，沿用 Duo 原有皮肤与外盖。
-- 每套皮肤固定屏幕、摇杆、ABXY 与底部按键坐标，整体等比显示，机身内部不动态重排。
-- 普通 iPhone 与 iPad 固定竖屏，游戏画面保持原生 LCD 比例。
-- GitHub Actions 检查素材坐标、常见尺寸及 CPU，构建 Release IPA，并生成 SHA-256 校验文件。
+- 调整 IPA 打包：使用标准 ZIP，直接在本地文件头记录 CRC 和大小，去掉 macOS 附加元数据。
+- 发布前检查 ZIP 完整性、Payload 主应用、Info.plist、iOS 可执行文件和本地文件头。
+- 沿用 v0.1.1 的四套固定比例机身素材与游戏核心。
 
 ## 安装
 
-下载 `3duos-0.1.1-unsigned.ipa`，使用自己的 Apple ID 和签名工具（SideStore、AltStore 或 Sideloadly）签名安装。
+在本页 Assets 下载 `3duos-0.1.2-unsigned.ipa`，保存到「文件」，再导入签名工具。安装包需使用自己的 Apple ID 或证书签名。
 
-最低系统为 iOS/iPadOS 26；Duo 折叠交互使用 iOS 27.1+。MetalFX 功能需要设备支持相应接口。
+对应 `.sha256` 文件可核对下载完整性。不要将 Release 网页另存为 `.ipa`。
 
-本版完成固定皮肤坐标检查与编译；普通 iPhone、iPad 尚未做真机测试。
-
-游戏文件自行导出、解密后在应用中 Import，支持 `.3ds`、`.cci`、`.cxi`。当前主要验证游戏为《塞尔达传说：时之笛 3D》。
+最低系统为 iOS/iPadOS 26；Duo 折叠交互使用 iOS 27.1+。游戏文件自行导入，支持解密的 `.3ds`、`.cci`、`.cxi`。

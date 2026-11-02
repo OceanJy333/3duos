@@ -7,7 +7,7 @@ on:
       version:
         description: Version without v prefix (build artifact only)
         required: true
-        default: '0.1.1'
+        default: '0.1.2'
 
 permissions:
   contents: read
@@ -78,3 +78,6 @@ jobs:
           gh release create "$GITHUB_REF_NAME" release-assets/* \
             --verify-tag --prerelease --title "3duos $GITHUB_REF_NAME" \
             --notes-file docs/RELEASE.md
+          gh release download "$GITHUB_REF_NAME" --pattern '*unsigned.ipa*' --dir release-download
+          (cd release-download && sha256sum -c *.sha256)
+          python3 scripts/check-ipa.py release-download/*.ipa

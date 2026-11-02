@@ -587,7 +587,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.ocean33.3duos.lab;
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;
@@ -730,7 +730,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = xyz.ocean33.3duos.lab;
 				PRODUCT_NAME = "3duos Lab";
 				SDKROOT = iphoneos;

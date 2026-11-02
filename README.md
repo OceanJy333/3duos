@@ -102,12 +102,18 @@ xcodebuild -project 3duos.xcodeproj -scheme 3duos \
 本地生成未签名 Release IPA（含 CPU、4 套素材坐标及 7 种竖屏尺寸的检查）：
 
 ```sh
-bash scripts/build-ipa.sh 0.1.1 1
+bash scripts/build-ipa.sh 0.1.2 1
 ```
 
-输出为 `build/release/3duos-0.1.1-unsigned.ipa` 及对应的 SHA-256 文件。
+输出为 `build/release/3duos-0.1.2-unsigned.ipa` 及对应的 SHA-256 文件。打包采用标准 ZIP，在发布前检查解压、应用入口和本地文件头。
 
-GitHub Actions 使用 Xcode 27.2 构建，无需保存开发者证书。手动运行 **Build IPA** 可下载构建产物；推送 `v0.1.1` 这样的版本标签，会自动构建并发布预览 Release。变更说明见 [本版说明](docs/RELEASE.md)。
+在 Release 页的 **Assets** 中下载 `.ipa` 文件，保存到「文件」后再导入签名工具；不要将 Release 网页另存为 `.ipa`。可用以下命令检查下载到的安装包：
+
+```sh
+python3 scripts/check-ipa.py build/release/3duos-0.1.2-unsigned.ipa
+```
+
+GitHub Actions 使用 Xcode 27.2 构建，无需保存开发者证书。手动运行 **Build IPA** 可下载构建产物；推送 `v0.1.2` 这样的版本标签，会自动构建并发布预览 Release。变更说明见 [本版说明](docs/RELEASE.md)。
 
 ## 导入与操作
 
